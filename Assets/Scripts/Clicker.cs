@@ -6,6 +6,9 @@ public class Clicker : MonoBehaviour
     // Ссылка на текстовое поле для отображения счётчика
     public Text scoreText;
 
+    // Ссылка на кнопку, по которой будут работать клики
+    public Button clickButton;
+
     // Статическая переменная для хранения количества кликов
     private static int clickCount = 0;
 
@@ -18,6 +21,17 @@ public class Clicker : MonoBehaviour
         // Загружаем сохранённое значение кликов из PlayerPrefs
         clickCount = PlayerPrefs.GetInt(CLICK_COUNT_KEY, 0);
         UpdateScoreText();
+
+        // Проверяем, что кнопка назначена
+        if (clickButton != null)
+        {
+            // Назначаем обработчик события для кнопки
+            clickButton.onClick.AddListener(OnButtonClick);
+        }
+        else
+        {
+            Debug.LogError("Кнопка для кликов не назначена!");
+        }
     }
 
     // Метод, вызываемый при нажатии на кнопку
