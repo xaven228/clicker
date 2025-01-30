@@ -742,6 +742,7 @@ MonoBehaviour:
     panelsToClose:
     - {fileID: 1307502000}
     - {fileID: 1307502000}
+  defaultPanel: {fileID: 1324357904}
 --- !u!1 &1307502000
 GameObject:
   m_ObjectHideFlags: 0
