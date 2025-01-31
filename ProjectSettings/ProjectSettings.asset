@@ -915,10 +915,10 @@ PlayerSettings:
   captureStartupLogs: {}
   activeInputHandler: 2
   windowsGamepadBackendHint: 0
-  cloudProjectId: 22495d4b-0ba2-4df2-ab14-3a4d59534702
+  cloudProjectId: b1da1bff-03cf-4d0c-9e99-e2aa50dd0af6
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: 1
+  projectName: clickercloud
   organizationId: heckfy272
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
