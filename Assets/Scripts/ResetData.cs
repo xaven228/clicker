@@ -11,6 +11,12 @@ public class ResetData : MonoBehaviour
     // Ссылка на UpgradeManager для сброса улучшений
     public UpgradeManager upgradeManager;
 
+    // Ссылка на объект фона
+    public SpriteRenderer background;
+
+    // Начальный спрайт фона
+    public Sprite defaultBackground;
+
     // Метод для полного сброса данных
     public void ResetAllData()
     {
@@ -33,7 +39,28 @@ public class ResetData : MonoBehaviour
             achievementManager.UpdateAchievementUI();
         }
 
-        // Сбрасываем данные в UpgradeManager
+        // Сбрасываем данные в UpgradeManager (инвентарь)
+        ResetInventory();
+
+        // Сбрасываем фон
+        ResetBackground();
+
+        // Очищаем PlayerPrefs
+        PlayerPrefs.DeleteAll();
+        PlayerPrefs.Save();
+
+        Debug.Log("Все данные сброшены!");
+
+        // Обновляем интерфейс
+        if (clicker != null)
+        {
+            clicker.UpdateAllScoreTexts();
+        }
+    }
+
+    // Метод для сброса инвентаря (улучшений)
+    private void ResetInventory()
+    {
         if (upgradeManager != null)
         {
             foreach (var upgrade in upgradeManager.upgrades)
@@ -56,19 +83,17 @@ public class ResetData : MonoBehaviour
             // Сбрасываем глобальный множитель
             Clicker.SetGlobalMultiplier(1f);
 
-            Debug.Log("Улучшения сброшены.");
+            Debug.Log("Инвентарь сброшен.");
         }
+    }
 
-        // Очищаем PlayerPrefs
-        PlayerPrefs.DeleteAll();
-        PlayerPrefs.Save();
-
-        Debug.Log("Все данные сброшены!");
-
-        // Обновляем интерфейс
-        if (clicker != null)
+    // Метод для сброса фона
+    private void ResetBackground()
+    {
+        if (background != null && defaultBackground != null)
         {
-            clicker.UpdateAllScoreTexts();
+            background.sprite = defaultBackground;
+            Debug.Log("Фон сброшен.");
         }
     }
 }

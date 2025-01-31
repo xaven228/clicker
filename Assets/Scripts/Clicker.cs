@@ -5,14 +5,19 @@ public class Clicker : MonoBehaviour
 {
     // Ссылка на текстовое поле для отображения счётчика (основное)
     public Text scoreText;
+
     // Массив текстовых полей, куда будут копироваться данные счётчика
     public Text[] additionalScoreTexts;
+
     // Ссылка на кнопку, по которой будут работать клики
     public Button clickButton;
+
     // Статическая переменная для хранения количества кликов
     private static int _clickCount = 0;
+
     // Глобальный множитель кликов
     private static float globalMultiplier = 1f;
+
     // Ключи для PlayerPrefs
     private const string CLICK_COUNT_KEY = "ClickCount";
     private const string MULTIPLIER_KEY = "GlobalMultiplier";
@@ -31,7 +36,7 @@ public class Clicker : MonoBehaviour
         PlayerPrefs.Save();
     }
 
-    // Публичный метод для увеличения количества кликов
+    // Метод для увеличения количества кликов
     public static void AddClicks(int amount)
     {
         _clickCount += Mathf.RoundToInt(amount * globalMultiplier); // Учитываем множитель
@@ -66,9 +71,12 @@ public class Clicker : MonoBehaviour
     {
         // Загружаем сохранённое значение кликов из PlayerPrefs
         _clickCount = PlayerPrefs.GetInt(CLICK_COUNT_KEY, 0);
+
         // Загружаем сохранённый множитель из PlayerPrefs
         globalMultiplier = PlayerPrefs.GetFloat(MULTIPLIER_KEY, 1f);
-        UpdateAllScoreTexts(); // Обновляем все текстовые поля
+
+        // Обновляем все текстовые поля
+        UpdateAllScoreTexts();
 
         // Проверяем, что кнопка назначена
         if (clickButton != null)
@@ -97,6 +105,7 @@ public class Clicker : MonoBehaviour
         {
             scoreText.text = "Клики: " + _clickCount;
         }
+
         // Обновляем дополнительные текстовые поля
         foreach (var text in additionalScoreTexts)
         {

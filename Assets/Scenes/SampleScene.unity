@@ -1740,9 +1740,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 444857157}
-        m_TargetAssemblyTypeName: QuitGame, Assembly-CSharp
-        m_MethodName: ExitGame
+      - m_Target: {fileID: 444857159}
+        m_TargetAssemblyTypeName: ResetData, Assembly-CSharp
+        m_MethodName: ResetAllData
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2155,6 +2155,7 @@ GameObject:
   m_Component:
   - component: {fileID: 444857158}
   - component: {fileID: 444857157}
+  - component: {fileID: 444857159}
   m_Layer: 0
   m_Name: Quit-manager
   m_TagString: Untagged
@@ -2189,6 +2190,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &444857159
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 444857156}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3d438a2ba83d544589b73598461c043, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clicker: {fileID: 1038183718}
+  achievementManager: {fileID: 20840070}
+  upgradeManager: {fileID: 2091363833}
 --- !u!1 &464142611
 GameObject:
   m_ObjectHideFlags: 0
@@ -5350,7 +5366,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1307502001
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5508,7 +5524,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1324357905
 RectTransform:
   m_ObjectHideFlags: 0
@@ -9348,24 +9364,28 @@ MonoBehaviour:
     upgradePrefab: {fileID: 89573931059096617, guid: b31085a8f1e91a84e9b0434ce6233807, type: 3}
     upgradeButton: {fileID: 1665145053}
     priceText: {fileID: 1913189074}
+    isPurchased: 0
   - upgradeName: "\u043A\u043B\u0438\u043A\u0438-\u04455"
     price: 1000
     bonusMultiplier: 5
     upgradePrefab: {fileID: 89573931059096617, guid: b31085a8f1e91a84e9b0434ce6233807, type: 3}
     upgradeButton: {fileID: 794640788}
     priceText: {fileID: 954203444}
+    isPurchased: 0
   - upgradeName: "\u043A\u043B\u0438\u043A\u0438-\u04458"
     price: 8000
     bonusMultiplier: 8
     upgradePrefab: {fileID: 89573931059096617, guid: b31085a8f1e91a84e9b0434ce6233807, type: 3}
     upgradeButton: {fileID: 1125635517}
     priceText: {fileID: 1975337744}
+    isPurchased: 0
   - upgradeName: "\u043A\u043B\u0438\u043A\u0438-\u044515"
     price: 10000
     bonusMultiplier: 15
     upgradePrefab: {fileID: 89573931059096617, guid: b31085a8f1e91a84e9b0434ce6233807, type: 3}
     upgradeButton: {fileID: 522262151}
     priceText: {fileID: 497865722}
+    isPurchased: 0
 --- !u!4 &2091363834
 Transform:
   m_ObjectHideFlags: 0
