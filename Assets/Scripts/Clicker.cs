@@ -15,8 +15,12 @@ public class Clicker : MonoBehaviour
     // Статическая переменная для хранения количества кликов
     private static int _clickCount = 0;
 
+    // Глобальный множитель кликов
+    private static float globalMultiplier = 1f;
+
     // Ключ для PlayerPrefs
     private const string CLICK_COUNT_KEY = "ClickCount";
+    private const string MULTIPLIER_KEY = "GlobalMultiplier";
 
     // Публичный геттер для получения количества кликов
     public static int GetClickCount()
@@ -35,9 +39,31 @@ public class Clicker : MonoBehaviour
     // Публичный метод для увеличения количества кликов
     public static void AddClicks(int amount)
     {
-        _clickCount += amount;
+        _clickCount += Mathf.RoundToInt(amount * globalMultiplier); // Учитываем множитель
         PlayerPrefs.SetInt(CLICK_COUNT_KEY, _clickCount);
         PlayerPrefs.Save();
+    }
+
+    // Метод для установки глобального множителя
+    public static void SetGlobalMultiplier(float multiplier)
+    {
+        globalMultiplier = multiplier;
+        PlayerPrefs.SetFloat(MULTIPLIER_KEY, globalMultiplier);
+        PlayerPrefs.Save();
+    }
+
+    // Метод для увеличения глобального множителя
+    public static void IncreaseGlobalMultiplier(float bonus)
+    {
+        globalMultiplier += bonus;
+        PlayerPrefs.SetFloat(MULTIPLIER_KEY, globalMultiplier);
+        PlayerPrefs.Save();
+    }
+
+    // Публичный метод для получения глобального множителя
+    public static float GetGlobalMultiplier()
+    {
+        return globalMultiplier;
     }
 
     // Метод, вызываемый при старте игры
@@ -45,6 +71,10 @@ public class Clicker : MonoBehaviour
     {
         // Загружаем сохранённое значение кликов из PlayerPrefs
         _clickCount = PlayerPrefs.GetInt(CLICK_COUNT_KEY, 0);
+
+        // Загружаем сохранённый множитель из PlayerPrefs
+        globalMultiplier = PlayerPrefs.GetFloat(MULTIPLIER_KEY, 1f);
+
         UpdateAllScoreTexts(); // Обновляем все текстовые поля
 
         // Проверяем, что кнопка назначена
@@ -62,7 +92,7 @@ public class Clicker : MonoBehaviour
     // Метод, вызываемый при нажатии на кнопку
     public void OnButtonClick()
     {
-        AddClicks(1); // Увеличиваем счётчик
+        AddClicks(1); // Увеличиваем счётчик с учётом множителя
         UpdateAllScoreTexts(); // Обновляем все текстовые поля
     }
 
