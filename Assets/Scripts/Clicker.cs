@@ -3,104 +3,121 @@ using UnityEngine.UI;
 
 public class Clicker : MonoBehaviour
 {
-    // Статическое поле для хранения количества кликов
-    private static int clickCount = 0;
+    // Ссылка на текстовое поле для отображения счётчика (основное)
+    public Text scoreText;
 
-    // Глобальный множитель кликов (по умолчанию 1)
+    // Массив текстовых полей, куда будут копироваться данные счётчика
+    public Text[] additionalScoreTexts;
+
+    // Ссылка на кнопку, по которой будут работать клики
+    public Button clickButton;
+
+    // Статическая переменная для хранения количества кликов
+    private static int _clickCount = 0;
+
+    // Глобальный множитель кликов
     private static float globalMultiplier = 1f;
 
-    // Метод для получения текущего количества кликов
+    // Ключ для PlayerPrefs
+    private const string CLICK_COUNT_KEY = "ClickCount";
+    private const string MULTIPLIER_KEY = "GlobalMultiplier";
+
+    // Публичный геттер для получения количества кликов
     public static int GetClickCount()
     {
-        return clickCount;
+        return _clickCount;
     }
 
-    // Метод для добавления кликов
+    // Публичный метод для установки количества кликов
+    public static void SetClickCount(int value)
+    {
+        _clickCount = value;
+        PlayerPrefs.SetInt(CLICK_COUNT_KEY, _clickCount);
+        PlayerPrefs.Save();
+    }
+
     public static void AddClicks(int amount)
     {
-        // Учитываем глобальный множитель при добавлении кликов
-        clickCount += Mathf.FloorToInt(amount * globalMultiplier);
+        _clickCount += Mathf.RoundToInt(amount * globalMultiplier);
+        PlayerPrefs.SetInt(CLICK_COUNT_KEY, _clickCount);
+        PlayerPrefs.Save();
 
-        if (clickCount < 0)
+        // Проверяем достижения
+        AchievementManager achievementManager = FindFirstObjectByType<AchievementManager>();
+        if (achievementManager != null)
         {
-            clickCount = 0;
+            achievementManager.CheckAchievements();
         }
-
-        SaveClickCount();
-        Debug.Log($"Количество кликов изменено: {clickCount}");
     }
 
-    // Метод для установки точного значения кликов
-    public static void SetClickCount(int newCount)
+    // Метод для установки глобального множителя
+    public static void SetGlobalMultiplier(float multiplier)
     {
-        clickCount = newCount;
-
-        if (clickCount < 0)
-        {
-            clickCount = 0;
-        }
-
-        SaveClickCount();
-        Debug.Log($"Количество кликов установлено: {clickCount}");
-    }
-
-    // Метод для получения текущего значения глобального множителя
-    public static float GetGlobalMultiplier()
-    {
-        return globalMultiplier;
+        globalMultiplier = multiplier;
+        PlayerPrefs.SetFloat(MULTIPLIER_KEY, globalMultiplier);
+        PlayerPrefs.Save();
     }
 
     // Метод для увеличения глобального множителя
     public static void IncreaseGlobalMultiplier(float bonus)
     {
         globalMultiplier += bonus;
-        Debug.Log($"Глобальный множитель увеличен на {bonus}. Текущий множитель: {globalMultiplier}");
-    }
-
-    // Метод для сохранения количества кликов
-    private static void SaveClickCount()
-    {
-        PlayerPrefs.SetInt("ClickCount", clickCount);
+        PlayerPrefs.SetFloat(MULTIPLIER_KEY, globalMultiplier);
         PlayerPrefs.Save();
-        Debug.Log($"Количество кликов сохранено: {clickCount}");
     }
 
-    // Метод для загрузки количества кликов
-    public static void LoadClickCount()
+    // Публичный метод для получения глобального множителя
+    public static float GetGlobalMultiplier()
     {
-        clickCount = PlayerPrefs.GetInt("ClickCount", 0);
-        Debug.Log($"Количество кликов загружено: {clickCount}");
+        return globalMultiplier;
     }
 
     // Метод, вызываемый при старте игры
     void Start()
     {
-        // Загружаем количество кликов при старте игры
-        LoadClickCount();
+        // Загружаем сохранённое значение кликов из PlayerPrefs
+        _clickCount = PlayerPrefs.GetInt(CLICK_COUNT_KEY, 0);
 
-        // Обновляем текстовые поля
-        UpdateAllScoreTexts();
-    }
+        // Загружаем сохранённый множитель из PlayerPrefs
+        globalMultiplier = PlayerPrefs.GetFloat(MULTIPLIER_KEY, 1f);
 
-    // Метод для обновления текстовых полей с количеством кликов
-    public void UpdateAllScoreTexts()
-    {
-        // Находим все текстовые поля с тегом "ScoreText" и обновляем их
-        Text[] scoreTexts = FindObjectsByType<Text>(FindObjectsSortMode.None); // Заменяем FindObjectsOfType
-        foreach (Text text in scoreTexts)
+        UpdateAllScoreTexts(); // Обновляем все текстовые поля
+
+        // Проверяем, что кнопка назначена
+        if (clickButton != null)
         {
-            if (text.CompareTag("ScoreText"))
-            {
-                text.text = $"Клики: {clickCount}";
-            }
+            // Назначаем обработчик события для кнопки
+            clickButton.onClick.AddListener(OnButtonClick);
+        }
+        else
+        {
+            Debug.LogError("Кнопка для кликов не назначена!");
         }
     }
 
-    // Метод для сброса количества кликов (для тестирования)
-    public static void ResetClickCount()
+    // Метод, вызываемый при нажатии на кнопку
+    public void OnButtonClick()
     {
-        clickCount = 0;
-        SaveClickCount();
-        Debug.Log("Количество кликов сброшено.");
+        AddClicks(1); // Увеличиваем счётчик с учётом множителя
+        UpdateAllScoreTexts(); // Обновляем все текстовые поля
+    }
+
+    // Публичный метод для обновления всех текстовых полей
+    public void UpdateAllScoreTexts()
+    {
+        // Обновляем основное текстовое поле
+        if (scoreText != null)
+        {
+            scoreText.text = "Клики: " + _clickCount;
+        }
+
+        // Обновляем дополнительные текстовые поля
+        foreach (var text in additionalScoreTexts)
+        {
+            if (text != null)
+            {
+                text.text = "Клики: " + _clickCount;
+            }
+        }
     }
 }

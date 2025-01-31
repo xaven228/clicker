@@ -1,12 +1,14 @@
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 [System.Serializable]
 public class Achievement
 {
     public string name; // Название достижения
-    public int targetClicks; // Цель по количеству кликов
-    public bool isUnlocked = false; // Флаг, указывающий, разблокировано ли достижение
+    public int target; // Цель (например, количество кликов)
+    public Slider progressBar; // Шкала прогресса
+    public Text progressText; // Текстовое поле для отображения прогресса
+    [HideInInspector] public bool isUnlocked; // Флаг выполнения
 }
 
 public class AchievementManager : MonoBehaviour
@@ -17,8 +19,11 @@ public class AchievementManager : MonoBehaviour
     // Ссылка на Clicker для получения текущего количества кликов
     public Clicker clicker;
 
-    // Ссылка на MessageManager для вывода сообщений о разблокировке
+    // Ссылка на MessageManager для вывода сообщений
     public MessageManager messageManager;
+
+    // Префикс для ключей PlayerPrefs
+    private const string UNLOCKED_KEY_PREFIX = "AchievementUnlocked_";
 
     // Метод, вызываемый при старте игры
     void Start()
@@ -33,23 +38,30 @@ public class AchievementManager : MonoBehaviour
         // Загружаем состояние достижений
         LoadAchievements();
 
-        // Проверяем достижения при старте игры
-        CheckAchievements();
+        // Обновляем интерфейс для всех достижений
+        UpdateAchievementUI();
     }
 
-    // Метод для проверки достижений
+    // Метод для проверки прогресса достижений
     public void CheckAchievements()
     {
-        int currentClicks = Clicker.GetClickCount(); // Получаем текущее количество кликов
+        int totalClicks = Clicker.GetClickCount(); // Получаем общее количество кликов за всё время
 
         foreach (var achievement in achievements)
         {
-            // Если достижение ещё не разблокировано и цель достигнута
-            if (!achievement.isUnlocked && currentClicks >= achievement.targetClicks)
+            // Если достижение ещё не разблокировано
+            if (!achievement.isUnlocked)
             {
-                UnlockAchievement(achievement);
+                // Проверяем, достигнута ли цель
+                if (totalClicks >= achievement.target)
+                {
+                    UnlockAchievement(achievement);
+                }
             }
         }
+
+        // Обновляем интерфейс
+        UpdateAchievementUI();
     }
 
     // Метод для разблокировки достижения
@@ -58,28 +70,24 @@ public class AchievementManager : MonoBehaviour
         achievement.isUnlocked = true;
 
         // Сохраняем состояние достижения
-        SaveAchievement(achievement);
+        SaveAchievementProgress(achievement);
 
-        // Выводим сообщение о разблокировке
+        // Выводим уведомление о выполнении достижения
         if (messageManager != null)
         {
-            messageManager.ShowMessage($"Достижение разблокировано: {achievement.name}");
-        }
-        else
-        {
-            Debug.LogWarning("Ссылка на MessageManager не назначена! Сообщение о разблокировке не показано.");
+            messageManager.ShowMessage($"Достижение выполнено: {achievement.name}");
         }
 
         Debug.Log($"Достижение '{achievement.name}' разблокировано!");
     }
 
     // Метод для сохранения состояния достижения
-    private void SaveAchievement(Achievement achievement)
+    private void SaveAchievementProgress(Achievement achievement)
     {
-        string key = $"Achievement_{achievement.name}_IsUnlocked";
-        PlayerPrefs.SetInt(key, achievement.isUnlocked ? 1 : 0);
+        string unlockedKey = UNLOCKED_KEY_PREFIX + achievement.name;
+
+        PlayerPrefs.SetInt(unlockedKey, achievement.isUnlocked ? 1 : 0);
         PlayerPrefs.Save();
-        Debug.Log($"Состояние достижения '{achievement.name}' сохранено: {achievement.isUnlocked}");
     }
 
     // Метод для загрузки состояния достижений
@@ -87,9 +95,34 @@ public class AchievementManager : MonoBehaviour
     {
         foreach (var achievement in achievements)
         {
-            string key = $"Achievement_{achievement.name}_IsUnlocked";
-            achievement.isUnlocked = PlayerPrefs.GetInt(key, 0) == 1;
-            Debug.Log($"Состояние достижения '{achievement.name}' загружено: {achievement.isUnlocked}");
+            string unlockedKey = UNLOCKED_KEY_PREFIX + achievement.name;
+
+            achievement.isUnlocked = PlayerPrefs.GetInt(unlockedKey, 0) == 1;
+
+            Debug.Log($"Загружено достижение: {achievement.name}, выполнено: {achievement.isUnlocked}");
+        }
+    }
+
+    // Метод для обновления интерфейса достижений
+    private void UpdateAchievementUI()
+    {
+        int totalClicks = Clicker.GetClickCount(); // Получаем общее количество кликов за всё время
+
+        foreach (var achievement in achievements)
+        {
+            if (achievement.progressBar != null && achievement.progressText != null)
+            {
+                // Делаем Slider неинтерактивным
+                achievement.progressBar.interactable = false;
+
+                // Обновляем шкалу прогресса
+                achievement.progressBar.maxValue = achievement.target;
+                achievement.progressBar.value = Mathf.Min(totalClicks, achievement.target);
+
+                // Обновляем текстовое поле
+                string status = achievement.isUnlocked ? "Выполнено" : "Не выполнено";
+                achievement.progressText.text = $"{achievement.name} - {status}\n{Mathf.Min(totalClicks, achievement.target)}/{achievement.target}";
+            }
         }
     }
 }
