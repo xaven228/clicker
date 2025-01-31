@@ -1,16 +1,19 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-[System.Serializable]
-public class Upgrade
-{
-    public string upgradeName; // Название улучшения
-    public int price; // Цена улучшения
-    public float bonusMultiplier; // Бонус (множитель)
-    public Button upgradePrefab; // Префаб кнопки, который появляется над кнопкой после покупки
-    public Button upgradeButton; // Кнопка для покупки улучшения
-    public Text priceText; // Текстовое поле для отображения цены
-}
+	[System.Serializable]	
+	public class Upgrade
+	{
+		public string upgradeName; // Название улучшения
+		public int price; // Цена улучшения
+		public float bonusMultiplier; // Бонус (множитель)
+		public Button upgradePrefab; // Префаб кнопки, который появляется над кнопкой после покупки
+		public Button upgradeButton; // Кнопка для покупки улучшения
+		public Text priceText; // Текстовое поле для отображения цены
+
+		// Флаг, указывающий, куплено ли улучшение
+		public bool isPurchased = false;
+	}
 
 public class UpgradeManager : MonoBehaviour
 {
@@ -55,60 +58,61 @@ public class UpgradeManager : MonoBehaviour
         }
     }
 
-    // Метод для попытки покупки улучшения
-    private void TryPurchaseUpgrade(Upgrade upgrade)
-    {
-        int currentClicks = Clicker.GetClickCount();
+	// Метод для попытки покупки улучшения
+	private void TryPurchaseUpgrade(Upgrade upgrade)
+	{
+		int currentClicks = Clicker.GetClickCount();
 
-        // Проверяем, достаточно ли кликов для покупки
-        if (currentClicks >= upgrade.price)
-        {
-            // Вычитаем стоимость улучшения из счётчика кликов
-            Clicker.SetClickCount(currentClicks - upgrade.price);
-            clicker.UpdateAllScoreTexts(); // Обновляем текстовые поля счётчика
+		// Проверяем, достаточно ли кликов для покупки
+		if (currentClicks >= upgrade.price && !upgrade.isPurchased)
+		{
+			// Вычитаем стоимость улучшения из счётчика кликов
+			Clicker.SetClickCount(currentClicks - upgrade.price);
+			clicker.UpdateAllScoreTexts(); // Обновляем текстовые поля счётчика
 
-            // Применяем бонус (множитель)
-            ApplyBonus(upgrade.bonusMultiplier);
+			// Применяем бонус (множитель)
+			ApplyBonus(upgrade.bonusMultiplier);
 
-            // Создаём префаб кнопки над кнопкой
-            if (upgrade.upgradePrefab != null)
-            {
-                Button instantiatedButton = Instantiate(upgrade.upgradePrefab, upgrade.upgradeButton.transform);
-                instantiatedButton.transform.localPosition = Vector3.zero; // Центрируем кнопку
-                instantiatedButton.interactable = false; // Делаем кнопку неактивной (если нужно)
-            }
+			// Создаём префаб кнопки над кнопкой
+			if (upgrade.upgradePrefab != null)
+			{
+				Button instantiatedButton = Instantiate(upgrade.upgradePrefab, upgrade.upgradeButton.transform);
+				instantiatedButton.transform.localPosition = Vector3.zero; // Центрируем кнопку
+				instantiatedButton.interactable = false; // Делаем кнопку неактивной (если нужно)
+			}
 
-            // Отключаем кнопку после покупки
-            upgrade.upgradeButton.interactable = false;
+			// Отключаем кнопку после покупки
+			upgrade.upgradeButton.interactable = false;
 
-            // Очищаем текст цены
-            if (upgrade.priceText != null)
-            {
-                upgrade.priceText.text = "Куплено!";
-            }
+			// Очищаем текст цены
+			if (upgrade.priceText != null)
+			{
+				upgrade.priceText.text = "Куплено!";
+			}
 
-            // Сохраняем состояние улучшения
-            string key = PURCHASED_KEY_PREFIX + upgrade.upgradeName;
-            PlayerPrefs.SetInt(key, 1);
-            PlayerPrefs.Save();
-            Debug.Log($"Сохранено улучшение: {key}"); // Отладочное сообщение
+			// Сохраняем состояние улучшения
+			upgrade.isPurchased = true;
+			string key = PURCHASED_KEY_PREFIX + upgrade.upgradeName;
+			PlayerPrefs.SetInt(key, 1);
+			PlayerPrefs.Save();
+			Debug.Log($"Сохранено улучшение: {key}"); // Отладочное сообщение
 
-            // Показываем сообщение о успешной покупке
-            if (messageManager != null)
-            {
-                string message = $"Поздравляем с улучшением! Клики теперь умножаются в {Clicker.GetGlobalMultiplier():F1} раз";
-                messageManager.ShowMessage(message);
-            }
-        }
-        else
-        {
-            // Показываем сообщение о нехватке средств
-            if (messageManager != null)
-            {
-                messageManager.ShowMessage("Недостаточно средств");
-            }
-        }
-    }
+			// Показываем сообщение о успешной покупке
+			if (messageManager != null)
+			{
+				string message = $"Поздравляем с улучшением! Клики теперь умножаются в {Clicker.GetGlobalMultiplier():F1} раз";
+				messageManager.ShowMessage(message);
+			}
+		}
+		else
+		{
+			// Показываем сообщение о нехватке средств
+			if (messageManager != null)
+			{
+				messageManager.ShowMessage("Недостаточно средств");
+			}
+		}
+	}
 
     // Метод для применения бонуса (множителя)
     private void ApplyBonus(float bonusMultiplier)
@@ -153,4 +157,5 @@ public class UpgradeManager : MonoBehaviour
             instantiatedButton.interactable = false; // Делаем кнопку неактивной (если нужно)
         }
     }
+    
 }
