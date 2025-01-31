@@ -26,9 +26,6 @@ public class CaseManager : MonoBehaviour
     // Цена открытия кейса
     public int casePrice = 1000;
 
-    // Штраф за неудачное открытие кейса
-    public int penaltyClicks = -500;
-
     // Ссылка на текущий фон (например, Image компонент)
     public Image currentBackground;
 
@@ -48,6 +45,9 @@ public class CaseManager : MonoBehaviour
     // Флаг для блокировки кнопки во время анимации
     private bool isSpinning = false;
 
+    // Список для хранения элементов рулетки
+    private List<Image> rouletteItems = new List<Image>();
+
     // Метод, вызываемый при старте игры
     void Start()
     {
@@ -58,21 +58,26 @@ public class CaseManager : MonoBehaviour
             return;
         }
 
-        // Автоматически добавляем элементы в рулетку
-        UpdateRouletteItems();
+        // Создаём элементы рулетки один раз
+        CreateRouletteItems();
+
+        // Подсвечиваем все элементы перед началом игры
+        HighlightAllItems(true);
 
         // Назначаем обработчик события для кнопки открытия кейса
         openCaseButton.onClick.AddListener(OpenCase);
     }
 
-    // Метод для обновления элементов рулетки
-    private void UpdateRouletteItems()
+    // Метод для создания элементов рулетки
+    private void CreateRouletteItems()
     {
         // Очищаем предыдущие элементы в рулетке
         foreach (Transform child in roulettePanel)
         {
             Destroy(child.gameObject);
         }
+
+        rouletteItems.Clear();
 
         // Создаём новые элементы для каждого фона
         foreach (var background in backgrounds)
@@ -94,6 +99,21 @@ public class CaseManager : MonoBehaviour
 
                 // Делаем элемент невидимым по умолчанию
                 imageComponent.color = new Color(1, 1, 1, 0); // Прозрачный цвет
+
+                // Добавляем элемент в список
+                rouletteItems.Add(imageComponent);
+            }
+        }
+    }
+
+    // Метод для подсветки всех элементов
+    private void HighlightAllItems(bool highlight)
+    {
+        foreach (Image item in rouletteItems)
+        {
+            if (item != null)
+            {
+                item.color = highlight ? Color.white : new Color(1, 1, 1, 0);
             }
         }
     }
@@ -117,12 +137,19 @@ public class CaseManager : MonoBehaviour
             {
                 messageManager.ShowMessage("Недостаточно кликов для открытия кейса!");
             }
+            else
+            {
+                Debug.LogError("Ссылка на MessageManager не назначена!");
+            }
             return;
         }
 
         // Вычитаем стоимость открытия кейса
         Clicker.AddClicks(-casePrice);
         clicker.UpdateAllScoreTexts();
+
+        // Гасим все элементы перед началом анимации
+        HighlightAllItems(false);
 
         // Запускаем анимацию рулетки
         StartCoroutine(SpinRoulette());
@@ -135,25 +162,6 @@ public class CaseManager : MonoBehaviour
 
         // Генерируем случайное время прокрутки
         float spinDuration = Random.Range(minSpinDuration, maxSpinDuration);
-
-        // Получаем все дочерние объекты рулетки (спрайты фонов)
-        List<Image> rouletteItems = new List<Image>();
-        foreach (Transform child in roulettePanel)
-        {
-            Image image = child.GetComponent<Image>();
-            if (image != null && image.sprite != null) // Убедитесь, что спрайт назначен
-            {
-                rouletteItems.Add(image);
-            }
-        }
-
-        // Если нет элементов в рулетке, завершаем корутину
-        if (rouletteItems.Count == 0)
-        {
-            Debug.LogError("В рулетке нет элементов или спрайты не назначены!");
-            isSpinning = false;
-            yield break;
-        }
 
         // Генерируем случайный результат
         int randomValue = Random.Range(0, 100); // Число от 0 до 99
@@ -171,32 +179,36 @@ public class CaseManager : MonoBehaviour
             }
         }
 
-        // Если ничего не выпало, выбираем штраф
-        if (selectedBackground == null)
-        {
-            selectedBackground = new BackgroundItem { name = "Штраф", backgroundSprite = null, probability = 0 };
-        }
-
-        // Анимация мерцания
+        // Анимация случайного подсвечивания
         float elapsedTime = 0f;
-        int currentIndex = 0;
+        int previousIndex = -1;
 
         while (elapsedTime < spinDuration)
         {
+            // Выбираем случайный индекс
+            int randomIndex;
+            do
+            {
+                randomIndex = Random.Range(0, rouletteItems.Count);
+            } while (randomIndex == previousIndex); // Убеждаемся, что индекс не повторяется
+
+            // Делаем предыдущий элемент невидимым
+            if (previousIndex != -1)
+            {
+                rouletteItems[previousIndex].color = new Color(1, 1, 1, 0);
+            }
+
             // Делаем текущий элемент видимым
-            rouletteItems[currentIndex].color = Color.white;
+            rouletteItems[randomIndex].color = Color.white;
+
+            // Запоминаем текущий индекс как предыдущий
+            previousIndex = randomIndex;
 
             // Ждём 0.5 секунды
             yield return new WaitForSeconds(0.5f);
 
-            // Делаем текущий элемент невидимым
-            rouletteItems[currentIndex].color = new Color(1, 1, 1, 0);
-
-            // Переходим к следующему элементу
-            currentIndex = (currentIndex + 1) % rouletteItems.Count;
-
             // Увеличиваем прошедшее время
-            elapsedTime += 1f; // Интервал между мерцаниями — 1 секунда
+            elapsedTime += 0.5f;
         }
 
         // В конце анимации делаем выбранный элемент видимым
@@ -215,6 +227,12 @@ public class CaseManager : MonoBehaviour
 
             if (selectedIndex != -1)
             {
+                // Гасим все элементы
+                foreach (Image item in rouletteItems)
+                {
+                    item.color = new Color(1, 1, 1, 0);
+                }
+
                 // Делаем выбранный элемент видимым
                 rouletteItems[selectedIndex].color = Color.white;
 
@@ -230,22 +248,10 @@ public class CaseManager : MonoBehaviour
                 {
                     messageManager.ShowMessage($"Вы выиграли: {selectedBackground.name}");
                 }
-            }
-        }
-        else
-        {
-            // Применяем штраф
-            Clicker.AddClicks(penaltyClicks);
-            clicker.UpdateAllScoreTexts();
-
-            if (resultText != null)
-            {
-                resultText.text = "Вы проиграли! Штраф: -500 кликов";
-            }
-
-            if (messageManager != null)
-            {
-                messageManager.ShowMessage("Вы проиграли! Штраф: -500 кликов");
+                else
+                {
+                    Debug.LogError("Ссылка на MessageManager не назначена!");
+                }
             }
         }
 
@@ -265,7 +271,14 @@ public class CaseManager : MonoBehaviour
     // Метод OnValidate вызывается при изменении значений в инспекторе
     private void OnValidate()
     {
-        // Автоматически обновляем элементы рулетки при изменении массива backgrounds
-        UpdateRouletteItems();
+        // Гасим все элементы в редакторе
+        foreach (Transform child in roulettePanel)
+        {
+            Image image = child.GetComponent<Image>();
+            if (image != null)
+            {
+                image.color = new Color(1, 1, 1, 0);
+            }
+        }
     }
 }

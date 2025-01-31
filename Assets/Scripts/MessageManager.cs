@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,34 +7,33 @@ public class MessageManager : MonoBehaviour
     // Ссылка на текстовое поле для отображения сообщений
     public Text messageText;
 
-    // Время, в течение которого сообщение будет видно (в секундах)
-    public float displayTime = 1f;
+    // Время, через которое сообщение исчезнет (в секундах)
+    public float messageDuration = 3f;
 
-    // Метод для показа сообщения
+    // Метод для отображения сообщения
     public void ShowMessage(string message)
     {
         if (messageText != null)
         {
-            // Устанавливаем текст
-            messageText.text = message;
+            messageText.text = message; // Устанавливаем текст
+            Debug.Log($"Сообщение показано: {message}"); // Логируем для отладки
 
-            // Делаем текст видимым
-            messageText.gameObject.SetActive(true);
-
-            // Запускаем корутину для скрытия текста через displayTime секунд
-            StartCoroutine(HideMessageAfterDelay());
+            // Запускаем корутину для очистки сообщения
+            StartCoroutine(ClearMessageAfterDelay());
+        }
+        else
+        {
+            Debug.LogError("Ссылка на messageText не назначена!");
         }
     }
 
-    // Корутина для скрытия текста
-    private System.Collections.IEnumerator HideMessageAfterDelay()
+    // Корутина для очистки сообщения через заданное время
+    private IEnumerator ClearMessageAfterDelay()
     {
-        yield return new WaitForSeconds(displayTime);
-
-        // Скрываем текст
+        yield return new WaitForSeconds(messageDuration); // Ждём указанное время
         if (messageText != null)
         {
-            messageText.gameObject.SetActive(false);
+            messageText.text = ""; // Очищаем текст
         }
     }
 }
