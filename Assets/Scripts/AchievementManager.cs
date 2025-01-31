@@ -82,7 +82,7 @@ public class AchievementManager : MonoBehaviour
     }
 
     // Метод для сохранения состояния достижения
-    private void SaveAchievementProgress(Achievement achievement)
+    public void SaveAchievementProgress(Achievement achievement)
     {
         string unlockedKey = UNLOCKED_KEY_PREFIX + achievement.name;
 
@@ -104,7 +104,7 @@ public class AchievementManager : MonoBehaviour
     }
 
     // Метод для обновления интерфейса достижений
-    private void UpdateAchievementUI()
+    public void UpdateAchievementUI()
     {
         int totalClicks = Clicker.GetClickCount(); // Получаем общее количество кликов за всё время
 

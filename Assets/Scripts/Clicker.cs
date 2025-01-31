@@ -5,20 +5,15 @@ public class Clicker : MonoBehaviour
 {
     // Ссылка на текстовое поле для отображения счётчика (основное)
     public Text scoreText;
-
     // Массив текстовых полей, куда будут копироваться данные счётчика
     public Text[] additionalScoreTexts;
-
     // Ссылка на кнопку, по которой будут работать клики
     public Button clickButton;
-
     // Статическая переменная для хранения количества кликов
     private static int _clickCount = 0;
-
     // Глобальный множитель кликов
     private static float globalMultiplier = 1f;
-
-    // Ключ для PlayerPrefs
+    // Ключи для PlayerPrefs
     private const string CLICK_COUNT_KEY = "ClickCount";
     private const string MULTIPLIER_KEY = "GlobalMultiplier";
 
@@ -36,18 +31,12 @@ public class Clicker : MonoBehaviour
         PlayerPrefs.Save();
     }
 
+    // Публичный метод для увеличения количества кликов
     public static void AddClicks(int amount)
     {
-        _clickCount += Mathf.RoundToInt(amount * globalMultiplier);
+        _clickCount += Mathf.RoundToInt(amount * globalMultiplier); // Учитываем множитель
         PlayerPrefs.SetInt(CLICK_COUNT_KEY, _clickCount);
         PlayerPrefs.Save();
-
-        // Проверяем достижения
-        AchievementManager achievementManager = FindFirstObjectByType<AchievementManager>();
-        if (achievementManager != null)
-        {
-            achievementManager.CheckAchievements();
-        }
     }
 
     // Метод для установки глобального множителя
@@ -77,10 +66,8 @@ public class Clicker : MonoBehaviour
     {
         // Загружаем сохранённое значение кликов из PlayerPrefs
         _clickCount = PlayerPrefs.GetInt(CLICK_COUNT_KEY, 0);
-
         // Загружаем сохранённый множитель из PlayerPrefs
         globalMultiplier = PlayerPrefs.GetFloat(MULTIPLIER_KEY, 1f);
-
         UpdateAllScoreTexts(); // Обновляем все текстовые поля
 
         // Проверяем, что кнопка назначена
@@ -110,7 +97,6 @@ public class Clicker : MonoBehaviour
         {
             scoreText.text = "Клики: " + _clickCount;
         }
-
         // Обновляем дополнительные текстовые поля
         foreach (var text in additionalScoreTexts)
         {
@@ -119,5 +105,16 @@ public class Clicker : MonoBehaviour
                 text.text = "Клики: " + _clickCount;
             }
         }
+    }
+
+    // Метод для сброса прогресса (для тестирования)
+    public static void ResetProgress()
+    {
+        _clickCount = 0;
+        globalMultiplier = 1f;
+        PlayerPrefs.DeleteKey(CLICK_COUNT_KEY);
+        PlayerPrefs.DeleteKey(MULTIPLIER_KEY);
+        PlayerPrefs.Save();
+        Debug.Log("Прогресс сброшен.");
     }
 }
