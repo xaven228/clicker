@@ -10,6 +10,15 @@ public class BackgroundItem
     public Sprite backgroundSprite; // Спрайт фона
     public int probability; // Вероятность выпадения (в процентах)
     public Vector2 size = new Vector2(100, 100); // Размер элемента (ширина и высота)
+
+    // Кнопка заблокированного состояния
+    public Button lockedButton;
+
+    // Кнопка разблокированного состояния
+    public Button unlockedButton;
+
+    // Флаг, указывающий, разблокирован ли фон
+    public bool isUnlocked = false;
 }
 
 public class CaseManager : MonoBehaviour
@@ -64,8 +73,24 @@ public class CaseManager : MonoBehaviour
         // Подсвечиваем все элементы перед началом игры
         HighlightAllItems(true);
 
+        // Загружаем состояние фонов
+        foreach (var background in backgrounds)
+        {
+            LoadBackgroundState(background);
+        }
+
+        // Инициализируем кнопки инвентаря
+        InitializeInventoryButtons();
+
         // Назначаем обработчик события для кнопки открытия кейса
         openCaseButton.onClick.AddListener(OpenCase);
+
+        // Загружаем выбранный фон
+        BackgroundItem loadedBackground = LoadSelectedBackground();
+        if (loadedBackground != null)
+        {
+            SetBackground(loadedBackground);
+        }
     }
 
     // Метод для создания элементов рулетки
@@ -114,6 +139,31 @@ public class CaseManager : MonoBehaviour
             if (item != null)
             {
                 item.color = highlight ? Color.white : new Color(1, 1, 1, 0);
+            }
+        }
+    }
+
+    // Метод для инициализации кнопок инвентаря
+    private void InitializeInventoryButtons()
+    {
+        foreach (var background in backgrounds)
+        {
+            if (background.lockedButton != null && background.unlockedButton != null)
+            {
+                // Заблокированная кнопка видима, если фон не разблокирован
+                background.lockedButton.gameObject.SetActive(!background.isUnlocked);
+
+                // Разблокированная кнопка видима, если фон разблокирован
+                background.unlockedButton.gameObject.SetActive(background.isUnlocked);
+
+                // Добавляем обработчик события для разблокированной кнопки
+                background.unlockedButton.onClick.AddListener(() => SetBackground(background));
+
+                Debug.Log($"Инициализированы кнопки для фона: {background.name}");
+            }
+            else
+            {
+                Debug.LogError($"Кнопки для фона {background.name} не назначены!");
             }
         }
     }
@@ -236,8 +286,8 @@ public class CaseManager : MonoBehaviour
                 // Делаем выбранный элемент видимым
                 rouletteItems[selectedIndex].color = Color.white;
 
-                // Устанавливаем выбранный фон
-                SetBackground(selectedBackground);
+                // Разблокируем фон
+                UnlockBackground(selectedBackground);
 
                 if (resultText != null)
                 {
@@ -259,26 +309,86 @@ public class CaseManager : MonoBehaviour
         isSpinning = false;
     }
 
+    // Метод для разблокировки фона
+    private void UnlockBackground(BackgroundItem background)
+    {
+        if (!background.isUnlocked)
+        {
+            background.isUnlocked = true;
+
+            // Скрываем заблокированную кнопку
+            if (background.lockedButton != null)
+            {
+                background.lockedButton.gameObject.SetActive(false);
+            }
+
+            // Показываем разблокированную кнопку
+            if (background.unlockedButton != null)
+            {
+                background.unlockedButton.gameObject.SetActive(true);
+            }
+
+            // Сохраняем состояние фона
+            SaveBackgroundState(background);
+
+            Debug.Log($"Фон '{background.name}' разблокирован!");
+        }
+    }
+
     // Метод для установки нового фона
-    private void SetBackground(BackgroundItem background)
+    public void SetBackground(BackgroundItem background)
     {
         if (currentBackground != null && background.backgroundSprite != null)
         {
             currentBackground.sprite = background.backgroundSprite;
+            Debug.Log($"Фон изменён на: {background.name}");
+
+            // Сохраняем выбранный фон
+            SaveSelectedBackground(background);
         }
     }
 
-    // Метод OnValidate вызывается при изменении значений в инспекторе
-    private void OnValidate()
+    // Метод для сохранения состояния фона
+    private void SaveBackgroundState(BackgroundItem background)
     {
-        // Гасим все элементы в редакторе
-        foreach (Transform child in roulettePanel)
+        string key = $"Background_{background.name}_IsUnlocked";
+        PlayerPrefs.SetInt(key, background.isUnlocked ? 1 : 0);
+        PlayerPrefs.Save();
+        Debug.Log($"Состояние фона '{background.name}' сохранено: {background.isUnlocked}");
+    }
+
+    // Метод для загрузки состояния фона
+    private void LoadBackgroundState(BackgroundItem background)
+    {
+        string key = $"Background_{background.name}_IsUnlocked";
+        background.isUnlocked = PlayerPrefs.GetInt(key, 0) == 1;
+        Debug.Log($"Состояние фона '{background.name}' загружено: {background.isUnlocked}");
+    }
+
+    // Метод для сохранения выбранного фона
+    private void SaveSelectedBackground(BackgroundItem background)
+    {
+        if (background != null)
         {
-            Image image = child.GetComponent<Image>();
-            if (image != null)
+            PlayerPrefs.SetString("SelectedBackground", background.name);
+            PlayerPrefs.Save();
+            Debug.Log($"Выбранный фон '{background.name}' сохранён.");
+        }
+    }
+
+    // Метод для загрузки выбранного фона
+    private BackgroundItem LoadSelectedBackground()
+    {
+        string selectedBackgroundName = PlayerPrefs.GetString("SelectedBackground", "");
+        foreach (var background in backgrounds)
+        {
+            if (background.name == selectedBackgroundName && background.isUnlocked)
             {
-                image.color = new Color(1, 1, 1, 0);
+                Debug.Log($"Загружен выбранный фон: {background.name}");
+                return background;
             }
         }
+        Debug.Log("Выбранный фон не найден или заблокирован.");
+        return null;
     }
 }
