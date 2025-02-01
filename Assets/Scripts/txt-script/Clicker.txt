@@ -1,0 +1,302 @@
+using UnityEngine;
+using UnityEngine.UI;
+
+public class Clicker : MonoBehaviour
+{
+    // Ссылка на текстовое поле для отображения счётчика (основное)
+    public Text scoreText;
+
+    // Массив текстовых полей, куда будут копироваться данные счётчика
+    public Text[] additionalScoreTexts;
+
+    // Ссылка на кнопку, по которой будут работать клики
+    public Button clickButton;
+
+    // Параметры босса
+    public GameObject bossPanel; // Панель с боссом
+    public Button bossButton; // Кнопка босса (для нанесения урона)
+    public Slider bossHealthBar; // Ползунок здоровья босса
+    public Text timerText; // Текст для отображения таймера
+    public int bossHealth = 100; // Здоровье босса
+    public float bossTimeLimit = 10f; // Время на победу над боссом
+    public int bossReward = 500; // Награда за победу
+    public int bossPenalty = 200; // Штраф за проигрыш
+    public float bossSpawnChance = 10f; // Шанс появления босса (в процентах)
+
+    // Статическая переменная для хранения количества кликов
+    private static int _clickCount = 0;
+
+    // Глобальный множитель кликов
+    private static float globalMultiplier = 1f;
+
+    // Ключи для PlayerPrefs
+    private const string CLICK_COUNT_KEY = "ClickCount";
+    private const string MULTIPLIER_KEY = "GlobalMultiplier";
+
+    // Переменные для ограничения частоты кликов
+    private float lastClickTime = 0f;
+    private const float minClickInterval = 0.1f; // Минимальный интервал между кликами (в секундах)
+
+    // Переменные для босса
+    private bool isBossActive = false;
+    private int currentBossHealth;
+    private int currentTimeLeft; // Оставшееся время в целых секундах
+
+    // Публичный геттер для получения количества кликов
+    public static int GetClickCount()
+    {
+        return _clickCount;
+    }
+
+    // Публичный метод для установки количества кликов
+    public static void SetClickCount(int value)
+    {
+        _clickCount = value;
+        SecurePlayerPrefs.SetInt(CLICK_COUNT_KEY, _clickCount); // Используем SecurePlayerPrefs
+    }
+
+    // Метод для увеличения количества кликов
+    public static void AddClicks(int amount)
+    {
+        _clickCount += Mathf.RoundToInt(amount * globalMultiplier); // Учитываем множитель
+        SecurePlayerPrefs.SetInt(CLICK_COUNT_KEY, _clickCount); // Используем SecurePlayerPrefs
+    }
+
+    // Метод для установки глобального множителя
+    public static void SetGlobalMultiplier(float multiplier)
+    {
+        globalMultiplier = multiplier;
+        PlayerPrefs.SetFloat(MULTIPLIER_KEY, globalMultiplier);
+        PlayerPrefs.Save();
+    }
+
+    // Метод для увеличения глобального множителя
+    public static void IncreaseGlobalMultiplier(float bonus)
+    {
+        globalMultiplier += bonus;
+        PlayerPrefs.SetFloat(MULTIPLIER_KEY, globalMultiplier);
+        PlayerPrefs.Save();
+    }
+
+    // Публичный метод для получения глобального множителя
+    public static float GetGlobalMultiplier()
+    {
+        return globalMultiplier;
+    }
+
+    // Метод, вызываемый при старте игры
+    void Start()
+    {
+        // Загружаем сохранённое значение кликов из SecurePlayerPrefs
+        _clickCount = SecurePlayerPrefs.GetInt(CLICK_COUNT_KEY, 0);
+
+        // Загружаем сохранённый множитель из PlayerPrefs
+        globalMultiplier = PlayerPrefs.GetFloat(MULTIPLIER_KEY, 1f);
+
+        // Обновляем все текстовые поля
+        UpdateAllScoreTexts();
+
+        // Проверяем, что кнопка назначена
+        if (clickButton != null)
+        {
+            // Назначаем обработчик события для кнопки
+            clickButton.onClick.AddListener(OnButtonClick);
+        }
+        else
+        {
+            Debug.LogError("Кнопка для кликов не назначена!");
+        }
+
+        // Скрываем панель босса при старте
+        if (bossPanel != null)
+        {
+            bossPanel.SetActive(false);
+        }
+
+        // Отключаем взаимодействие со слайдером
+        if (bossHealthBar != null)
+        {
+            bossHealthBar.interactable = false; // Запрещаем изменять слайдер мышкой
+        }
+    }
+
+    // Метод, вызываемый при нажатии на основную кнопку кликов
+    public void OnButtonClick()
+    {
+        // Проверяем, прошло ли достаточно времени с момента последнего клика
+        if (Time.time - lastClickTime < minClickInterval)
+        {
+            Debug.LogWarning("Слишком быстрое нажатие! Клик игнорируется.");
+            return;
+        }
+
+        // Если босс не активен, проверяем шанс его появления
+        if (!isBossActive && Random.Range(0f, 100f) <= bossSpawnChance)
+        {
+            MessageManager.Instance.ShowMessage("Босс появился!", Color.red);
+            StartBossFight();
+        }
+        else
+        {
+            AddClicks(1); // Увеличиваем счётчик с учётом множителя
+        }
+
+        UpdateAllScoreTexts(); // Обновляем все текстовые поля
+        lastClickTime = Time.time; // Обновляем время последнего клика
+    }
+
+    // Метод для начала битвы с боссом
+    private void StartBossFight()
+    {
+        Debug.Log("Босс появился!");
+
+        // Активируем панель босса
+        if (bossPanel != null)
+        {
+            bossPanel.SetActive(true);
+        }
+
+        // Инициализируем здоровье и таймер босса
+        currentBossHealth = bossHealth;
+        currentTimeLeft = Mathf.FloorToInt(bossTimeLimit); // Устанавливаем начальное время в целых секундах
+
+        // Обновляем полосу здоровья
+        if (bossHealthBar != null)
+        {
+            bossHealthBar.maxValue = bossHealth;
+            bossHealthBar.value = currentBossHealth;
+        }
+
+        // Назначаем обработчик события для кнопки босса
+        if (bossButton != null)
+        {
+            bossButton.onClick.AddListener(AttackBoss);
+        }
+
+        // Обновляем текст таймера
+        UpdateTimerText();
+
+        // Запускаем таймер с интервалом в 1 секунду
+        InvokeRepeating(nameof(UpdateTimer), 1f, 1f);
+        isBossActive = true;
+    }
+
+    // Метод для атаки босса
+    private void AttackBoss()
+    {
+        if (isBossActive)
+        {
+            currentBossHealth -= 1; // Уменьшаем здоровье босса
+
+            // Обновляем полосу здоровья
+            if (bossHealthBar != null)
+            {
+                bossHealthBar.value = currentBossHealth;
+            }
+
+            // Проверяем, побеждён ли босс
+            if (currentBossHealth <= 0)
+            {
+                DefeatBoss();
+            }
+        }
+    }
+
+    // Метод для завершения битвы с боссом
+    private void EndBossFight(bool isVictory)
+    {
+        isBossActive = false;
+
+        // Деактивируем панель босса
+        if (bossPanel != null)
+        {
+            bossPanel.SetActive(false);
+        }
+
+        // Убираем обработчик события для кнопки босса
+        if (bossButton != null)
+        {
+            bossButton.onClick.RemoveListener(AttackBoss);
+        }
+
+        // Останавливаем таймер
+        CancelInvoke(nameof(UpdateTimer));
+
+        if (isVictory)
+        {
+            Debug.Log("Босс побеждён!");
+            MessageManager.Instance.ShowMessage("Вы победили босса!", Color.green);
+            AddClicks(bossReward); // Добавляем награду
+        }
+        else
+        {
+            Debug.Log("Вы проиграли боссу!");
+            MessageManager.Instance.ShowMessage("Вы проиграли боссу!", Color.red);
+            AddClicks(-bossPenalty); // Отнимаем штраф
+        }
+
+        UpdateAllScoreTexts(); // Обновляем интерфейс
+    }
+
+    // Метод для победы над боссом
+    private void DefeatBoss()
+    {
+        EndBossFight(true);
+    }
+
+    // Метод для обновления таймера
+    private void UpdateTimer()
+    {
+        currentTimeLeft--; // Уменьшаем таймер на 1 секунду
+
+        // Обновляем текст таймера
+        UpdateTimerText();
+
+        // Если время истекло, завершаем бой как проигрыш
+        if (currentTimeLeft <= 0)
+        {
+            Debug.Log("Время истекло! Бой завершён.");
+            EndBossFight(false);
+        }
+    }
+
+    // Метод для обновления текста таймера
+    private void UpdateTimerText()
+    {
+        if (timerText != null)
+        {
+            timerText.text = $"Время: {currentTimeLeft} сек";
+            Debug.Log($"Оставшееся время: {currentTimeLeft} сек");
+        }
+    }
+
+    // Метод для обновления всех текстовых полей
+    public void UpdateAllScoreTexts()
+    {
+        // Обновляем основное текстовое поле
+        if (scoreText != null)
+        {
+            scoreText.text = $"Клики: {_clickCount}";
+        }
+
+        // Обновляем дополнительные текстовые поля
+        foreach (var text in additionalScoreTexts)
+        {
+            if (text != null)
+            {
+                text.text = $"Клики: {_clickCount}";
+            }
+        }
+    }
+
+    // Метод для сброса прогресса (для тестирования)
+    public static void ResetProgress()
+    {
+        _clickCount = 0;
+        globalMultiplier = 1f;
+        SecurePlayerPrefs.SetInt(CLICK_COUNT_KEY, _clickCount); // Используем SecurePlayerPrefs
+        PlayerPrefs.DeleteKey(MULTIPLIER_KEY);
+        PlayerPrefs.Save();
+        Debug.Log("Прогресс сброшен.");
+    }
+}

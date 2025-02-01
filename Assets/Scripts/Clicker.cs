@@ -5,12 +5,19 @@ public class Clicker : MonoBehaviour
 {
     // Ссылка на текстовое поле для отображения счётчика (основное)
     public Text scoreText;
-
     // Массив текстовых полей, куда будут копироваться данные счётчика
     public Text[] additionalScoreTexts;
-
     // Ссылка на кнопку, по которой будут работать клики
     public Button clickButton;
+    // Ссылка на AchievementManager для проверки прогресса достижений
+    public AchievementManager achievementManager;
+    // Ссылка на BossManager для управления боссом
+    public BossManager bossManager;
+    // Шанс появления босса (в процентах)
+    public float bossSpawnChance = 10f;
+    // Переменные для ограничения частоты кликов
+    private float lastClickTime = 0f;
+    private const float minClickInterval = 0.1f; // Минимальный интервал между кликами (в секундах)
 
     // Статическая переменная для хранения количества кликов
     private static int _clickCount = 0;
@@ -22,32 +29,66 @@ public class Clicker : MonoBehaviour
     private const string CLICK_COUNT_KEY = "ClickCount";
     private const string MULTIPLIER_KEY = "GlobalMultiplier";
 
-    // Переменные для проверки аномалий
-    private int lastClickCount = 0;
-    private float lastCheckTime = 0f;
-
-    // Переменные для ограничения частоты кликов
-    private float lastClickTime = 0f;
-    private const float minClickInterval = 0.1f; // Минимальный интервал между кликами (в секундах)
-
-    // Публичный геттер для получения количества кликов
-    public static int GetClickCount()
+    // Метод, вызываемый при старте игры
+    void Start()
     {
-        return _clickCount;
+        // Загружаем сохранённое значение кликов из PlayerPrefs
+        _clickCount = PlayerPrefs.GetInt(CLICK_COUNT_KEY, 0);
+
+        // Загружаем сохранённый множитель из PlayerPrefs
+        globalMultiplier = PlayerPrefs.GetFloat(MULTIPLIER_KEY, 1f);
+
+        // Обновляем все текстовые поля
+        UpdateAllScoreTexts();
+
+        // Проверяем, что кнопка назначена
+        if (clickButton != null)
+        {
+            // Назначаем обработчик события для кнопки
+            clickButton.onClick.AddListener(OnButtonClick);
+        }
+        else
+        {
+            Debug.LogError("Кнопка для кликов не назначена!");
+        }
     }
 
-    // Публичный метод для установки количества кликов
-    public static void SetClickCount(int value)
+    // Метод, вызываемый при нажатии на основную кнопку кликов
+    public void OnButtonClick()
     {
-        _clickCount = value;
-        SecurePlayerPrefs.SetInt(CLICK_COUNT_KEY, _clickCount); // Используем SecurePlayerPrefs
+        // Проверяем, прошло ли достаточно времени с момента последнего клика
+        if (Time.time - lastClickTime < minClickInterval)
+        {
+            Debug.LogWarning("Слишком быстрое нажатие! Клик игнорируется.");
+            return;
+        }
+
+        // Если босс не активен, проверяем шанс его появления
+        if (bossManager != null && !bossManager.isBossActive && Random.Range(0f, 100f) <= bossSpawnChance)
+        {
+            MessageManager.Instance.ShowMessage("Босс появился!", Color.red);
+            bossManager.StartBossFight();
+        }
+        else
+        {
+            AddClicks(1); // Увеличиваем счётчик с учётом множителя
+        }
+
+        // Проверяем прогресс достижений
+        if (achievementManager != null)
+        {
+            achievementManager.CheckAchievements();
+        }
+
+        UpdateAllScoreTexts(); // Обновляем все текстовые поля
+        lastClickTime = Time.time; // Обновляем время последнего клика
     }
 
     // Метод для увеличения количества кликов
     public static void AddClicks(int amount)
     {
         _clickCount += Mathf.RoundToInt(amount * globalMultiplier); // Учитываем множитель
-        SecurePlayerPrefs.SetInt(CLICK_COUNT_KEY, _clickCount); // Используем SecurePlayerPrefs
+        PlayerPrefs.SetInt(CLICK_COUNT_KEY, _clickCount); // Сохраняем значение в PlayerPrefs
     }
 
     // Метод для установки глобального множителя
@@ -72,53 +113,13 @@ public class Clicker : MonoBehaviour
         return globalMultiplier;
     }
 
-    // Метод, вызываемый при старте игры
-    void Start()
-    {
-        // Загружаем сохранённое значение кликов из SecurePlayerPrefs
-        _clickCount = SecurePlayerPrefs.GetInt(CLICK_COUNT_KEY, 0);
-
-        // Загружаем сохранённый множитель из PlayerPrefs
-        globalMultiplier = PlayerPrefs.GetFloat(MULTIPLIER_KEY, 1f);
-
-        // Обновляем все текстовые поля
-        UpdateAllScoreTexts();
-
-        // Проверяем, что кнопка назначена
-        if (clickButton != null)
-        {
-            // Назначаем обработчик события для кнопки
-            clickButton.onClick.AddListener(OnButtonClick);
-        }
-        else
-        {
-            Debug.LogError("Кнопка для кликов не назначена!");
-        }
-    }
-
-    // Метод, вызываемый при нажатии на кнопку
-    public void OnButtonClick()
-    {
-        // Проверяем, прошло ли достаточно времени с момента последнего клика
-        if (Time.time - lastClickTime < minClickInterval)
-        {
-            Debug.LogWarning("Слишком быстрое нажатие! Клик игнорируется.");
-            return;
-        }
-
-        AddClicks(1); // Увеличиваем счётчик с учётом множителя
-        UpdateAllScoreTexts(); // Обновляем все текстовые поля
-
-        lastClickTime = Time.time; // Обновляем время последнего клика
-    }
-
     // Метод для обновления всех текстовых полей
     public void UpdateAllScoreTexts()
     {
         // Обновляем основное текстовое поле
         if (scoreText != null)
         {
-            scoreText.text = "Клики: " + _clickCount;
+            scoreText.text = $"Клики: {_clickCount}";
         }
 
         // Обновляем дополнительные текстовые поля
@@ -126,7 +127,7 @@ public class Clicker : MonoBehaviour
         {
             if (text != null)
             {
-                text.text = "Клики: " + _clickCount;
+                text.text = $"Клики: {_clickCount}";
             }
         }
     }
@@ -136,27 +137,9 @@ public class Clicker : MonoBehaviour
     {
         _clickCount = 0;
         globalMultiplier = 1f;
-        SecurePlayerPrefs.SetInt(CLICK_COUNT_KEY, _clickCount); // Используем SecurePlayerPrefs
+        PlayerPrefs.DeleteKey(CLICK_COUNT_KEY);
         PlayerPrefs.DeleteKey(MULTIPLIER_KEY);
         PlayerPrefs.Save();
         Debug.Log("Прогресс сброшен.");
-    }
-
-    // Метод, вызываемый каждый кадр
-    void Update()
-    {
-        // Проверяем разницу в количестве кликов каждую секунду
-        if (Time.time - lastCheckTime > 1f)
-        {
-            int clickDifference = _clickCount - lastClickCount;
-            if (clickDifference > 100) // Если за секунду добавилось больше 100 кликов
-            {
-                Debug.LogWarning("Обнаружено подозрительное поведение! Сбрасываем прогресс.");
-                ResetProgress(); // Сбрасываем прогресс
-            }
-
-            lastClickCount = _clickCount;
-            lastCheckTime = Time.time;
-        }
     }
 }

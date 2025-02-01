@@ -18,44 +18,45 @@ public class ResetData : MonoBehaviour
     public Sprite defaultBackground;
 
     // Метод для полного сброса данных
-// Метод для полного сброса данных
-public void ResetAllData()
-{
-    // Сбрасываем данные в Clicker
-    if (clicker != null)
+    public void ResetAllData()
     {
-        Clicker.ResetProgress();
-    }
-
-    // Сбрасываем данные в AchievementManager
-    if (achievementManager != null)
-    {
-        foreach (var achievement in achievementManager.achievements)
+        // Сбрасываем данные в Clicker
+        if (clicker != null)
         {
-            achievement.isUnlocked = false;
-            achievementManager.SaveAchievementProgress(achievement); // Вызов метода SaveAchievementProgress
+            Clicker.ResetProgress();
         }
-        // Обновляем интерфейс достижений
-        achievementManager.UpdateAchievementUI();
+
+        // Сбрасываем данные в AchievementManager
+        if (achievementManager != null)
+        {
+            foreach (var achievement in achievementManager.achievements)
+            {
+                achievement.isUnlocked = false;
+                achievementManager.SaveAchievementProgress(achievement);
+            }
+
+            // Обновляем интерфейс достижений
+            achievementManager.UpdateAchievementUI();
+        }
+
+        // Сбрасываем данные в UpgradeManager (инвентарь)
+        ResetInventory();
+
+        // Сбрасываем фон
+        ResetBackground();
+
+        // Очищаем PlayerPrefs
+        PlayerPrefs.DeleteAll();
+        PlayerPrefs.Save();
+
+        Debug.Log("Все данные сброшены!");
+
+        // Обновляем интерфейс
+        if (clicker != null)
+        {
+            clicker.UpdateAllScoreTexts();
+        }
     }
-
-    // Сбрасываем данные в UpgradeManager (инвентарь)
-    ResetInventory();
-
-    // Сбрасываем фон
-    ResetBackground();
-
-    // Очищаем PlayerPrefs
-    PlayerPrefs.DeleteAll();
-    PlayerPrefs.Save();
-    Debug.Log("Все данные сброшены!");
-
-    // Обновляем интерфейс
-    if (clicker != null)
-    {
-        clicker.UpdateAllScoreTexts();
-    }
-}
 
     // Метод для сброса инвентаря (улучшений)
     private void ResetInventory()
