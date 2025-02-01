@@ -1,288 +1,138 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
-[System.Serializable]
-public class BackgroundItem
+public class RouletteManager : MonoBehaviour
 {
-    public string name;               // Название фона
-    public Sprite backgroundSprite;   // Спрайт фона
-    public int probability;           // Вероятность выпадения (в процентах)
-    public bool isUnlocked = false;   // Флаг, указывающий, разблокирован ли фон
-}
-
-[System.Serializable]
-public class BonusItem
-{
-    public string name;           // Название бонуса
-    public int bonusAmount;       // Количество бонусных кликов
-    public Sprite bonusSprite;    // Спрайт бонуса
-    public int probability;       // Вероятность выпадения бонуса
-}
-
-[System.Serializable]
-public class RouletteItem
-{
-    public string name;          // Название предмета (фон или бонус)
-    public Sprite itemSprite;    // Спрайт предмета
-    public int probability;      // Шанс выпадения (в процентах)
-    public bool isBonus;         // Это бонус (клики) или фон?
-    public int bonusAmount;      // Количество кликов (если это бонус)
-}
-
-public class CaseManager : MonoBehaviour
-{
-    [Header("Ссылки на компоненты")]
-    public Clicker clicker;
-    public MessageManager messageManager;
-    public Image currentBackground;  // UI элемент для отображения текущего фона
-    public Button openCaseButton;
-    public Text resultText;
-    public Transform roulettePanel;
-
-    [Header("Настройки кейса")]
-    public BackgroundItem[] backgrounds; // Массив фонов
-    public BonusItem[] bonuses;          // Массив бонусов
-    public int casePrice = 1000;         // Цена кейса
-
     [Header("Настройки рулетки")]
-    public float minSpinDuration = 5f;
-    public float maxSpinDuration = 8f;
+    public List<CaseItem> caseItems;  // Список предметов с шансом появления
+    public List<Sprite> backgrounds;  // Список фонов для выпадения
+    public int totalItemsCount = 1000; // Количество экземпляров в рулетке
+    public int clickCost = 10; // Стоимость запуска рулетки в кликах
 
-    private bool isSpinning = false;
-    private List<Image> rouletteItems = new List<Image>();
+    private List<CaseItem> rouletteItems = new List<CaseItem>(); // Список предметов на рулетке
+    private Clicker clicker; // Ссылка на скрипт Clicker
 
-    void Start()
+void Start()
+{
+    clicker = FindObjectOfType<Clicker>();
+    if (clicker == null)
     {
-        if (CheckRequiredReferences())
-        {
-            InitializeCase();
-        }
+        Debug.LogError("Clicker не найден на сцене!");
     }
+}
 
-    // Проверка наличия всех необходимых ссылок в инспекторе
-    private bool CheckRequiredReferences()
+    // Инициализация рулетки с учетом шансов
+    private void InitializeRouletteItems()
     {
-        if (openCaseButton == null || currentBackground == null || resultText == null || roulettePanel == null)
-        {
-            Debug.LogError("Не все ссылки назначены в инспекторе!");
-            return false;
-        }
-        return true;
-    }
-
-    // Инициализация рулетки
-    private void InitializeCase()
-    {
-        CreateRouletteItems();
-        openCaseButton.onClick.AddListener(OpenCase);
-    }
-
-    // Создание элементов рулетки
-    private void CreateRouletteItems()
-    {
-        // Очищаем старые элементы
-        foreach (Transform child in roulettePanel)
-        {
-            Destroy(child.gameObject);
-        }
-
         rouletteItems.Clear();
 
-        // Создаем фоны
-        foreach (var background in backgrounds)
+        // Заполняем рулетку элементами с учетом шансов
+        foreach (var item in caseItems)
         {
-            if (background.backgroundSprite != null)
+            int itemCount = Mathf.RoundToInt(item.spawnChance * totalItemsCount);
+
+            // Добавляем элемент в рулетку столько раз, сколько раз он должен появиться
+            for (int i = 0; i < itemCount; i++)
             {
-                CreateImageItem(background.backgroundSprite, roulettePanel);
+                rouletteItems.Add(item);
             }
         }
 
-        // Создаем бонусы
-        foreach (var bonus in bonuses)
+        // Добавляем фоны в рулетку
+        foreach (var bg in backgrounds)
         {
-            if (bonus.bonusSprite != null)
+            // Можете задать шанс появления фона
+            int bgCount = Mathf.RoundToInt(0.1f * totalItemsCount); // Пример: 10% для фонов
+            for (int i = 0; i < bgCount; i++)
             {
-                CreateImageItem(bonus.bonusSprite, roulettePanel);
-            }
-        }
-    }
-
-    // Создание изображения для элемента рулетки
-    private void CreateImageItem(Sprite sprite, Transform parent)
-    {
-        GameObject imageObject = new GameObject("RouletteItem", typeof(Image));
-        imageObject.transform.SetParent(parent, false);
-
-        Image imageComponent = imageObject.GetComponent<Image>();
-        imageComponent.sprite = sprite;
-        imageComponent.preserveAspect = true;
-
-        RectTransform rectTransform = imageObject.GetComponent<RectTransform>();
-        rectTransform.sizeDelta = new Vector2(100, 100); // Размер каждого элемента
-    }
-
-    // Открытие кейса
-    private void OpenCase()
-    {
-        if (isSpinning) return;
-
-        if (Clicker.GetClickCount() < casePrice)
-        {
-            ShowMessage("Недостаточно кликов для открытия кейса!");
-            return;
-        }
-
-        Clicker.AddClicks(-casePrice);
-        clicker.UpdateAllScoreTexts();
-
-        StartCoroutine(SpinRoulette());
-    }
-
-    // Корутина для анимации рулетки
-    private IEnumerator SpinRoulette()
-    {
-        isSpinning = true;
-        float spinDuration = Random.Range(minSpinDuration, maxSpinDuration);
-        float elapsedTime = 0f;
-
-        // Крутить рулетку
-        while (elapsedTime < spinDuration)
-        {
-            foreach (Transform child in roulettePanel)
-            {
-                child.GetComponent<Image>().color = Color.white;
-            }
-
-            yield return new WaitForSeconds(0.2f);
-            elapsedTime += 0.2f;
-        }
-
-        // Когда рулетка останавливается, получаем результат
-        SpinResult result = GetSpinResult();
-        HandleSpinResult(result);
-
-        isSpinning = false;
-    }
-
-    // Получить результат спина (фон или бонус)
-    private SpinResult GetSpinResult()
-    {
-        int totalProbability = 0;
-
-        // Рассчитываем общую вероятность
-        foreach (var background in backgrounds)
-        {
-            totalProbability += background.probability;
-        }
-        foreach (var bonus in bonuses)
-        {
-            totalProbability += bonus.probability;
-        }
-
-        int randomValue = Random.Range(0, totalProbability);
-
-        // Проверяем, что выпал фон
-        int cumulativeProbability = 0;
-        foreach (var background in backgrounds)
-        {
-            cumulativeProbability += background.probability;
-            if (randomValue < cumulativeProbability)
-            {
-                return new SpinResult { isBackground = true, background = background };
+                CaseItem backgroundItem = new CaseItem { itemSprite = bg, name = "Background" };
+                rouletteItems.Add(backgroundItem);
             }
         }
 
-        // Проверяем, что выпал бонус
-        cumulativeProbability = 0;
-        foreach (var bonus in bonuses)
-        {
-            cumulativeProbability += bonus.probability;
-            if (randomValue < cumulativeProbability)
-            {
-                return new SpinResult { isBackground = false, bonus = bonus };
-            }
-        }
-
-        return null;
+        // Перемешиваем список предметов для случайного порядка
+        Shuffle(rouletteItems);
     }
 
-    // Обработка результата спина
-    private void HandleSpinResult(SpinResult result)
+    // Метод для перемешивания списка (Фишер-Йейтс)
+    private void Shuffle(List<CaseItem> list)
     {
-        if (result.isBackground)
+        System.Random rand = new System.Random();
+        int n = list.Count;
+        while (n > 1)
         {
-            UnlockBackground(result.background);
-            ShowMessage($"Вы выиграли фон: {result.background.name}");
-            SetBackground(result.background); // Устанавливаем фоновое изображение
-        }
-        else
-        {
-            AddBonusClicks(result.bonus);
-            ShowMessage($"Вы выиграли бонус: {result.bonus.name}!");
+            n--;
+            int k = rand.Next(n + 1);
+            CaseItem value = list[k];
+            list[k] = list[n];
+            list[n] = value;
         }
     }
 
-    // Разблокировка фона
-    private void UnlockBackground(BackgroundItem background)
+// Метод для начала прокрутки рулетки с оплатой кликами
+public void StartRoulette()
+{
+    if (Clicker.GetClickCount() >= clickCost)  // Используем статический метод через имя класса
     {
-        if (!background.isUnlocked)
-        {
-            background.isUnlocked = true;
-            SaveBackgroundState(background);
-        }
+        Clicker.RemoveClicks(clickCost);  // Используем статический метод через имя класса
+        StartCoroutine(SpinRoulette());  // Запускаем прокрутку
     }
-
-    // Добавление бонусных кликов
-    private void AddBonusClicks(BonusItem bonus)
+    else
     {
-        Clicker.AddClicks(bonus.bonusAmount);
-        clicker.UpdateAllScoreTexts();
-    }
-
-    // Сохранение состояния фона
-    private void SaveBackgroundState(BackgroundItem background)
-    {
-        string key = $"Background_{background.name}_IsUnlocked";
-        PlayerPrefs.SetInt(key, background.isUnlocked ? 1 : 0);
-        PlayerPrefs.Save();
-    }
-
-    // Метод для установки выбранного фона
-    public void SetBackground(BackgroundItem background)
-    {
-        if (currentBackground != null && background.backgroundSprite != null)
-        {
-            currentBackground.sprite = background.backgroundSprite;
-            SaveSelectedBackground(background);
-        }
-    }
-
-    // Сохранение выбранного фона
-    private void SaveSelectedBackground(BackgroundItem background)
-    {
-        PlayerPrefs.SetString("SelectedBackground", background.name);
-        PlayerPrefs.Save();
-    }
-
-    // Показ сообщения
-    private void ShowMessage(string message)
-    {
-        if (messageManager != null)
-        {
-            messageManager.ShowMessage(message);
-        }
-        else
-        {
-            Debug.Log(message);
-        }
+        Debug.Log("Недостаточно кликов для запуска рулетки!");
     }
 }
 
-public class SpinResult
+    private IEnumerator SpinRoulette()
+    {
+        // Определяем случайный индекс для выигрыша
+        int totalItems = rouletteItems.Count;
+        int targetIndex = Random.Range(0, totalItems);
+
+        // Случайное время прокрутки
+        float spinDuration = Random.Range(1f, 3f);
+        float elapsedTime = 0f;
+
+        // Прокрутка рулетки по оси X
+        float startPosition = 0;
+        float targetPosition = startPosition - (totalItems * 100);  // Параметры прокрутки могут изменяться в зависимости от вашего дизайна
+
+        while (elapsedTime < spinDuration)
+        {
+            float t = elapsedTime / spinDuration;
+            t = Mathf.SmoothStep(0, 1, t); // Плавное замедление
+            float currentPosition = Mathf.Lerp(startPosition, targetPosition, t);
+            // Нужно будет обновить позицию вашего UI панель для рулетки, чтобы она двигалась
+
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        // После завершения прокрутки, обновляем позицию
+        // roulettePanel.localPosition = new Vector3(targetPosition, 0, 0);
+
+        // Обрабатываем результат
+        HandleSpinResult(targetIndex);
+    }
+
+    private void HandleSpinResult(int targetIndex)
+    {
+        // Получаем предмет по индексу
+        CaseItem resultItem = rouletteItems[targetIndex];
+
+        // Выводим сообщение о выигрыше (можно вывести в UI)
+        Debug.Log($"Поздравляем! Вы выиграли: {resultItem.name}");
+
+        // Вы можете добавить логику для добавления предмета в инвентарь или другие действия
+    }
+}
+
+// Структура для предмета рулетки
+[System.Serializable]
+public class CaseItem
 {
-    public bool isBackground;
-    public BackgroundItem background;
-    public BonusItem bonus;
+    public string name; // Имя предмета
+    public Sprite itemSprite; // Изображение предмета
+    [Range(0, 1)] public float spawnChance; // Шанс появления предмета (от 0 до 1)
 }

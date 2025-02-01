@@ -53,6 +53,13 @@ public class Clicker : MonoBehaviour
         OnClickAdded?.Invoke(amount);  // Вызов события с количеством добавленных кликов
     }
 
+    // Новый метод для уменьшения количества кликов
+    public static void RemoveClicks(int amount)
+    {
+        _clickCount = Mathf.Max(0, _clickCount - amount); // Уменьшаем клики, не позволяя уйти в минус
+        SaveData(CLICK_COUNT_KEY, _clickCount);
+    }
+
     // Метод для установки глобального множителя
     public static void SetGlobalMultiplier(float multiplier)
     {

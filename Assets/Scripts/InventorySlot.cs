@@ -1,114 +1,96 @@
-using System.Collections;
-using System.Collections.Generic;
+/*
 using UnityEngine;
 using UnityEngine.UI;
 
-[System.Serializable]
-public class BackgroundItem
-{
-    public string name;               // Название фона
-    public Sprite backgroundSprite;   // Спрайт фона
-    public int probability;           // Вероятность выпадения (в процентах)
-    public bool isUnlocked = false;   // Флаг, указывающий, разблокирован ли фон
-}
-
-[System.Serializable]
-public class BonusItem
-{
-    public string name;           // Название бонуса
-    public int bonusAmount;       // Количество бонусных кликов
-    public Sprite bonusSprite;    // Спрайт бонуса
-    public int probability;       // Вероятность выпадения бонуса
-}
-
 public class InventorySlot : MonoBehaviour
 {
-    // Ссылка на заблокированную иконку
-    [Header("UI Elements")]
-    [SerializeField] private Image lockedIcon;
+	// Ссылка на заблокированную иконку
+	[Header("UI Elements")]
+	[SerializeField] private Image lockedIcon;
 
-    // Ссылка на кнопку разблокировки
-    [SerializeField] private Button unlockButton;
+	// Ссылка на кнопку разблокировки
+	[SerializeField] private Button unlockButton;
 
-    // Спрайт фона
-    private Sprite backgroundSprite;
+	// Спрайт фона
+	private Sprite backgroundSprite;
 
-    // Название фона
-    private string backgroundName;
+	// Название фона
+	private string backgroundName;
 
-    // Инициализация слота с фоном
-    public void Initialize(string name, Sprite sprite)
-    {
-        // Запись в лог для дебага
-        Debug.Log($"Инициализация слота для фона: {name}");
+	// Инициализация слота с фоном
+	public void Initialize(string name, Sprite sprite)
+	{
+		// Запись в лог для дебага
+		Debug.Log($"Инициализация слота для фона: {name}");
 
-        backgroundName = name;
-        backgroundSprite = sprite;
+		backgroundName = name;
+		backgroundSprite = sprite;
 
-        SetupLockedIcon();
-        SetupUnlockButton();
-    }
+		SetupLockedIcon();
+		SetupUnlockButton();
+	}
 
-    // Настроить заблокированную иконку
-    private void SetupLockedIcon()
-    {
-        if (lockedIcon != null)
-        {
-            lockedIcon.enabled = true;
-            lockedIcon.sprite = backgroundSprite; // Устанавливаем спрайт фона
-        }
-    }
+	// Настроить заблокированную иконку
+	private void SetupLockedIcon()
+	{
+		if (lockedIcon != null)
+		{
+			lockedIcon.enabled = true;
+			lockedIcon.sprite = backgroundSprite; // Устанавливаем спрайт фона
+		}
+	}
 
-    // Настроить кнопку разблокировки
-    private void SetupUnlockButton()
-    {
-        if (unlockButton != null)
-        {
-            unlockButton.gameObject.SetActive(false); // Изначально кнопка скрыта
-            unlockButton.onClick.RemoveAllListeners(); // Очистить старые слушатели
-            unlockButton.onClick.AddListener(Unlock); // Добавить слушателя для разблокировки
-        }
-    }
+	// Настроить кнопку разблокировки
+	private void SetupUnlockButton()
+	{
+		if (unlockButton != null)
+		{
+			unlockButton.gameObject.SetActive(false); // Изначально кнопка скрыта
+			unlockButton.onClick.RemoveAllListeners(); // Очистить старые слушатели
+			unlockButton.onClick.AddListener(Unlock); // Добавить слушателя для разблокировки
+		}
+	}
 
-    // Разблокировать слот
-    private void Unlock()
-    {
-        if (lockedIcon != null)
-        {
-            lockedIcon.enabled = false; // Отключаем заблокированную иконку
-        }
+	// Разблокировать слот
+	private void Unlock()
+	{
+		if (lockedIcon != null)
+		{
+			lockedIcon.enabled = false; // Отключаем заблокированную иконку
+		}
 
-        if (unlockButton != null)
-        {
-            unlockButton.gameObject.SetActive(false); // Скрываем кнопку разблокировки
-        }
+		if (unlockButton != null)
+		{
+			unlockButton.gameObject.SetActive(false); // Скрываем кнопку разблокировки
+		}
 
-        // Поменять фон в CaseManager
-        SetBackground();
-    }
+		// Поменять фон в CaseManager
+		SetBackground();
+	}
 
-    // Изменить фон
-    private void SetBackground()
-    {
-        if (backgroundSprite != null)
-        {
-            // Используем новый метод для поиска CaseManager
-            CaseManager caseManager = Object.FindFirstObjectByType<CaseManager>(); 
+	// Изменить фон
+	private void SetBackground()
+	{
+		if (backgroundSprite != null)
+		{
+			// Используем новый метод для поиска CaseManager
+			CaseManager caseManager = Object.FindFirstObjectByType<CaseManager>(); 
 
-            if (caseManager != null)
-            {
-                BackgroundItem backgroundItem = new BackgroundItem
-                {
-                    backgroundSprite = backgroundSprite,
-                    name = backgroundName // Устанавливаем имя
-                };
+			if (caseManager != null)
+			{
+				BackgroundItem backgroundItem = new BackgroundItem
+				{
+					backgroundSprite = backgroundSprite,
+					name = backgroundName // Устанавливаем имя
+				};
 
-                caseManager.SetBackground(backgroundItem);
-            }
-            else
-            {
-                Debug.LogError("CaseManager не найден в сцене!");
-            }
-        }
-    }
+				caseManager.SetBackground(backgroundItem);
+			}
+			else
+			{
+				Debug.LogError("CaseManager не найден в сцене!");
+			}
+		}
+	}
 }
+*/
