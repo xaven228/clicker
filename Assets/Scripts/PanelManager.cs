@@ -4,64 +4,43 @@ using UnityEngine.UI;
 [System.Serializable]
 public class ButtonPanelPair
 {
+    [Header("Pair Info")]
     public string pairName; // Название пары
-    public Button button; // Кнопка
-    public GameObject[] panelsToOpen; // Панели для открытия
-    public GameObject[] panelsToClose; // Панели для закрытия
+    public Button button; // Кнопка, которая будет управлять панелями
+    public GameObject[] panelsToOpen; // Панели, которые нужно открыть
+    public GameObject[] panelsToClose; // Панели, которые нужно закрыть
 }
 
 public class PanelManager : MonoBehaviour
 {
-    // Массив пар "кнопка - панель"
-    public ButtonPanelPair[] buttonPanelPairs;
+    [Header("Button-Panel Configuration")]
+    [SerializeField] private ButtonPanelPair[] buttonPanelPairs; // Массив пар "кнопка - панель"
 
-    // Ссылка на панель, которая должна быть открыта при старте
-    public GameObject defaultPanel;
+    [Header("Default Panel")]
+    [SerializeField] private GameObject defaultPanel; // Ссылка на панель, которая должна быть открыта при старте
 
     // Метод, вызываемый при старте игры
-    void Start()
+    private void Start()
     {
-        // Проверяем, что массив пар не пуст
         if (buttonPanelPairs == null || buttonPanelPairs.Length == 0)
         {
             Debug.LogError("Массив buttonPanelPairs пуст! Добавьте пары в инспекторе.");
             return;
         }
 
-        // Открываем только одну панель по умолчанию
+        // Открытие панели по умолчанию
         OpenDefaultPanel();
 
-        // Проходим по всем парам кнопок и панелей
-        foreach (var pair in buttonPanelPairs)
-        {
-            // Проверяем, что кнопка назначена
-            if (pair.button == null)
-            {
-                Debug.LogError($"Кнопка не назначена для пары: {pair.pairName}");
-                continue; // Пропускаем эту пару
-            }
-
-            // Назначаем обработчик события для каждой кнопки
-            pair.button.onClick.AddListener(() => HandleButtonClick(pair));
-        }
+        // Назначение обработчиков кнопок
+        AssignButtonListeners();
     }
 
     // Метод для открытия панели по умолчанию
     private void OpenDefaultPanel()
     {
-        // Закрываем все панели
-        foreach (var pair in buttonPanelPairs)
-        {
-            if (pair.panelsToOpen != null)
-            {
-                foreach (var panel in pair.panelsToOpen)
-                {
-                    if (panel != null) panel.SetActive(false);
-                }
-            }
-        }
+        // Закрываем все панели перед открытием дефолтной
+        SetPanelsActiveState(false);
 
-        // Проверяем, что дефолтная панель назначена
         if (defaultPanel == null)
         {
             Debug.LogError("Дефолтная панель не назначена!");
@@ -75,25 +54,60 @@ public class PanelManager : MonoBehaviour
     // Метод для обработки нажатия на кнопку
     private void HandleButtonClick(ButtonPanelPair pair)
     {
-        // Логируем имя пары для отладки
         Debug.Log($"Нажата кнопка из пары: {pair.pairName}");
 
         // Открываем все панели из массива panelsToOpen
-        if (pair.panelsToOpen != null)
+        TogglePanelsState(pair.panelsToOpen, true);
+        
+        // Закрываем все панели из массива panelsToClose
+        TogglePanelsState(pair.panelsToClose, false);
+    }
+
+    // Метод для установки состояний всех панелей
+    private void SetPanelsActiveState(bool state)
+    {
+        foreach (var pair in buttonPanelPairs)
         {
-            foreach (var panel in pair.panelsToOpen)
+            if (pair.panelsToOpen != null)
             {
-                if (panel != null) panel.SetActive(true);
+                foreach (var panel in pair.panelsToOpen)
+                {
+                    if (panel != null) panel.SetActive(state);
+                }
             }
         }
+    }
 
-        // Закрываем все панели из массива panelsToClose
-        if (pair.panelsToClose != null)
+    // Метод для переключения состояния панелей
+    private void TogglePanelsState(GameObject[] panels, bool state)
+    {
+        if (panels == null) return;
+
+        foreach (var panel in panels)
         {
-            foreach (var panel in pair.panelsToClose)
+            if (panel != null)
             {
-                if (panel != null) panel.SetActive(false);
+                bool isCurrentlyActive = panel.activeSelf;
+                if (isCurrentlyActive != state) // Проверяем, нужно ли изменять состояние
+                {
+                    panel.SetActive(state);
+                }
             }
+        }
+    }
+
+    // Метод для назначения обработчиков событий для кнопок
+    private void AssignButtonListeners()
+    {
+        foreach (var pair in buttonPanelPairs)
+        {
+            if (pair.button == null)
+            {
+                Debug.LogError($"Кнопка не назначена для пары: {pair.pairName}");
+                continue; // Пропускаем эту пару
+            }
+
+            pair.button.onClick.AddListener(() => HandleButtonClick(pair));
         }
     }
 }

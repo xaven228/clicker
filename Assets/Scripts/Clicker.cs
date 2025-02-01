@@ -18,17 +18,17 @@ public class Clicker : MonoBehaviour
     // Глобальный множитель кликов
     private static float globalMultiplier = 1f;
 
+    // Событие для добавления кликов
+    public static event System.Action<int> OnClickAdded;
+
     // Ключи для PlayerPrefs
     private const string CLICK_COUNT_KEY = "ClickCount";
     private const string MULTIPLIER_KEY = "GlobalMultiplier";
 
-    // Переменные для проверки аномалий
-    private int lastClickCount = 0;
-    private float lastCheckTime = 0f;
-
-    // Переменные для ограничения частоты кликов
-    private float lastClickTime = 0f;
-    private const float minClickInterval = 0.1f; // Минимальный интервал между кликами (в секундах)
+    // Публичное поле для лимита кликов в секунду
+    public float clicksPerSecondLimit = 10f; // Лимит кликов в секунду, настраиваемый в инспекторе
+    private float lastClickTime = 0f; // Время последнего клика
+    private int clicksThisSecond = 0; // Количество кликов за текущую секунду
 
     // Публичный геттер для получения количества кликов
     public static int GetClickCount()
@@ -40,43 +40,58 @@ public class Clicker : MonoBehaviour
     public static void SetClickCount(int value)
     {
         _clickCount = value;
-        SecurePlayerPrefs.SetInt(CLICK_COUNT_KEY, _clickCount); // Используем SecurePlayerPrefs
+        SaveData(CLICK_COUNT_KEY, _clickCount);
     }
 
     // Метод для увеличения количества кликов
     public static void AddClicks(int amount)
     {
         _clickCount += Mathf.RoundToInt(amount * globalMultiplier); // Учитываем множитель
-        SecurePlayerPrefs.SetInt(CLICK_COUNT_KEY, _clickCount); // Используем SecurePlayerPrefs
+        SaveData(CLICK_COUNT_KEY, _clickCount);
+        
+        // Триггерим событие после добавления кликов
+        OnClickAdded?.Invoke(amount);  // Вызов события с количеством добавленных кликов
     }
 
     // Метод для установки глобального множителя
     public static void SetGlobalMultiplier(float multiplier)
     {
         globalMultiplier = multiplier;
-        PlayerPrefs.SetFloat(MULTIPLIER_KEY, globalMultiplier);
-        PlayerPrefs.Save();
+        SaveData(MULTIPLIER_KEY, globalMultiplier);
     }
 
-    // Метод для увеличения глобального множителя
-    public static void IncreaseGlobalMultiplier(float bonus)
-    {
-        globalMultiplier += bonus;
-        PlayerPrefs.SetFloat(MULTIPLIER_KEY, globalMultiplier);
-        PlayerPrefs.Save();
-    }
-
-    // Публичный метод для получения глобального множителя
+    // Метод для получения глобального множителя
     public static float GetGlobalMultiplier()
     {
         return globalMultiplier;
     }
 
+    // Метод для увеличения глобального множителя
+    public static void IncreaseGlobalMultiplier(float amount)
+    {
+        globalMultiplier += amount;
+        SaveData(MULTIPLIER_KEY, globalMultiplier);
+    }
+
+    // Метод для сохранения данных в PlayerPrefs (для int значений)
+    private static void SaveData(string key, int value)
+    {
+        PlayerPrefs.SetInt(key, value);
+        PlayerPrefs.Save();
+    }
+
+    // Метод для сохранения данных в PlayerPrefs (для float значений)
+    private static void SaveData(string key, float value)
+    {
+        PlayerPrefs.SetFloat(key, value);
+        PlayerPrefs.Save();
+    }
+
     // Метод, вызываемый при старте игры
     void Start()
     {
-        // Загружаем сохранённое значение кликов из SecurePlayerPrefs
-        _clickCount = SecurePlayerPrefs.GetInt(CLICK_COUNT_KEY, 0);
+        // Загружаем сохранённое значение кликов из PlayerPrefs
+        _clickCount = PlayerPrefs.GetInt(CLICK_COUNT_KEY, 0);
 
         // Загружаем сохранённый множитель из PlayerPrefs
         globalMultiplier = PlayerPrefs.GetFloat(MULTIPLIER_KEY, 1f);
@@ -99,10 +114,20 @@ public class Clicker : MonoBehaviour
     // Метод, вызываемый при нажатии на кнопку
     public void OnButtonClick()
     {
-        // Проверяем, прошло ли достаточно времени с момента последнего клика
-        if (Time.time - lastClickTime < minClickInterval)
+        // Проверяем, не превышен ли лимит кликов в секунду
+        if (Time.time - lastClickTime < 1f)
         {
-            Debug.LogWarning("Слишком быстрое нажатие! Клик игнорируется.");
+            clicksThisSecond++;
+        }
+        else
+        {
+            clicksThisSecond = 1; // Начинаем отсчёт кликов с нового периода
+        }
+
+        if (clicksThisSecond > clicksPerSecondLimit)
+        {
+            // Если лимит превышен, игнорируем клик и выводим сообщение
+            Debug.LogWarning("Лимит кликов в секунду превышен. Клик проигнорирован.");
             return;
         }
 
@@ -136,7 +161,7 @@ public class Clicker : MonoBehaviour
     {
         _clickCount = 0;
         globalMultiplier = 1f;
-        SecurePlayerPrefs.SetInt(CLICK_COUNT_KEY, _clickCount); // Используем SecurePlayerPrefs
+        SaveData(CLICK_COUNT_KEY, _clickCount);
         PlayerPrefs.DeleteKey(MULTIPLIER_KEY);
         PlayerPrefs.Save();
         Debug.Log("Прогресс сброшен.");
@@ -145,18 +170,7 @@ public class Clicker : MonoBehaviour
     // Метод, вызываемый каждый кадр
     void Update()
     {
-        // Проверяем разницу в количестве кликов каждую секунду
-        if (Time.time - lastCheckTime > 1f)
-        {
-            int clickDifference = _clickCount - lastClickCount;
-            if (clickDifference > 100) // Если за секунду добавилось больше 100 кликов
-            {
-                Debug.LogWarning("Обнаружено подозрительное поведение! Сбрасываем прогресс.");
-                ResetProgress(); // Сбрасываем прогресс
-            }
-
-            lastClickCount = _clickCount;
-            lastCheckTime = Time.time;
-        }
+        // Нет необходимости делать дополнительные проверки на аномалии здесь,
+        // поскольку проверка кликов в секунду уже происходит при каждом нажатии на кнопку.
     }
 }

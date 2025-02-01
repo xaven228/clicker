@@ -4,125 +4,140 @@ using UnityEngine.UI;
 [System.Serializable]
 public class Achievement
 {
-    public string name; // Название достижения
-    public int target; // Цель (например, количество кликов)
-    public Slider progressBar; // Шкала прогресса
-    public Text progressText; // Текстовое поле для отображения прогресса
-    [HideInInspector] public bool isUnlocked; // Флаг выполнения
+    public string achievementName;  // Название достижения
+    public string description;      // Описание достижения
+    public int maxProgress;         // Максимальный прогресс (например, 100 или 1000)
+    public int currentProgress;     // Текущий прогресс
+    public bool isUnlocked;         // Статус выполнения достижения
+
+    // Для отображения статуса
+    public Text achievementText;    // Текстовое поле для отображения статуса
+    public Image achievementIcon;   // Иконка для отображения статуса (можно использовать для цветовой индикации)
 }
 
 public class AchievementManager : MonoBehaviour
 {
-    // Массив достижений
-    public Achievement[] achievements;
+    public Achievement[] achievements;  // Массив достижений
+    public Clicker clicker;  // Ссылка на Clicker для получения текущего количества кликов
+    public MessageManager messageManager;  // Ссылка на MessageManager для вывода сообщений
 
-    // Ссылка на Clicker для получения текущего количества кликов
-    public Clicker clicker;
-
-    // Ссылка на MessageManager для вывода сообщений
-    public MessageManager messageManager;
-
-    // Префикс для ключей PlayerPrefs
     private const string UNLOCKED_KEY_PREFIX = "AchievementUnlocked_";
 
-    // Метод, вызываемый при старте игры
-    void Start()
+    private void OnEnable()
     {
-        // Проверяем, что все ссылки назначены
-        if (clicker == null)
-        {
-            Debug.LogError("Ссылка на Clicker не назначена!");
-            return;
-        }
+        // Подписываемся на событие добавления кликов
+        Clicker.OnClickAdded += CheckAchievements;
+    }
 
+    private void OnDisable()
+    {
+        // Отписываемся от события
+        Clicker.OnClickAdded -= CheckAchievements;
+    }
+
+    private void Start()
+    {
         // Загружаем состояние достижений
         LoadAchievements();
 
-        // Обновляем интерфейс для всех достижений
-        UpdateAchievementUI();
+        // Выполняем начальную проверку достижений
+        CheckAchievements(0);  // Начальная проверка достижений с нулевым количеством кликов
     }
 
-    // Метод для проверки прогресса достижений
-    public void CheckAchievements()
+    public void CheckAchievements(int addedClicks)
     {
-        int totalClicks = Clicker.GetClickCount(); // Получаем общее количество кликов за всё время
+        int totalClicks = Clicker.GetClickCount();  // Получаем общее количество кликов
 
         foreach (var achievement in achievements)
         {
-            // Если достижение ещё не разблокировано
             if (!achievement.isUnlocked)
             {
-                // Проверяем, достигнута ли цель
-                if (totalClicks >= achievement.target)
+                // Обновляем прогресс для каждого достижения
+                if (totalClicks >= achievement.maxProgress && achievement.currentProgress < achievement.maxProgress)
                 {
-                    UnlockAchievement(achievement);
+                    achievement.currentProgress = achievement.maxProgress;  // Завершаем достижение
+                    UnlockAchievement(achievement);  // Разблокируем достижение
+                }
+                else if (totalClicks < achievement.maxProgress)
+                {
+                    achievement.currentProgress = totalClicks;  // Обновляем прогресс
                 }
             }
         }
 
-        // Обновляем интерфейс
+        // Обновляем UI с новыми данными
         UpdateAchievementUI();
     }
 
-    // Метод для разблокировки достижения
     private void UnlockAchievement(Achievement achievement)
     {
         achievement.isUnlocked = true;
 
-        // Сохраняем состояние достижения
-        SaveAchievementProgress(achievement);
+        // Сохраняем прогресс достижения в PlayerPrefs
+        string unlockedKey = UNLOCKED_KEY_PREFIX + achievement.achievementName;
+        PlayerPrefs.SetInt(unlockedKey, 1);  // 1 означает, что достижение выполнено
+        PlayerPrefs.Save();
 
-        // Выводим уведомление о выполнении достижения
+        // Показываем сообщение
         if (messageManager != null)
         {
-            messageManager.ShowMessage($"Достижение выполнено: {achievement.name}");
+            messageManager.ShowMessage($"Достижение выполнено: {achievement.achievementName}");
         }
 
-        Debug.Log($"Достижение '{achievement.name}' разблокировано!");
+        Debug.Log($"Достижение '{achievement.achievementName}' выполнено!");
     }
 
-    // Метод для сохранения состояния достижения
-    public void SaveAchievementProgress(Achievement achievement)
-    {
-        string unlockedKey = UNLOCKED_KEY_PREFIX + achievement.name;
-
-        PlayerPrefs.SetInt(unlockedKey, achievement.isUnlocked ? 1 : 0);
-        PlayerPrefs.Save();
-    }
-
-    // Метод для загрузки состояния достижений
     private void LoadAchievements()
     {
         foreach (var achievement in achievements)
         {
-            string unlockedKey = UNLOCKED_KEY_PREFIX + achievement.name;
-
+            string unlockedKey = UNLOCKED_KEY_PREFIX + achievement.achievementName;
             achievement.isUnlocked = PlayerPrefs.GetInt(unlockedKey, 0) == 1;
-
-            Debug.Log($"Загружено достижение: {achievement.name}, выполнено: {achievement.isUnlocked}");
+            achievement.currentProgress = PlayerPrefs.GetInt("AchievementProgress_" + achievement.achievementName, 0);  // Загружаем сохранённый прогресс
+            Debug.Log($"Загружено достижение: {achievement.achievementName}, выполнено: {achievement.isUnlocked}, прогресс: {achievement.currentProgress}");
         }
     }
 
-    // Метод для обновления интерфейса достижений
     public void UpdateAchievementUI()
     {
-        int totalClicks = Clicker.GetClickCount(); // Получаем общее количество кликов за всё время
-
         foreach (var achievement in achievements)
         {
-            if (achievement.progressBar != null && achievement.progressText != null)
+            // Обновление текста и иконки для отображения статуса достижения
+            if (achievement.achievementText != null)
             {
-                // Делаем Slider неинтерактивным
-                achievement.progressBar.interactable = false;
-
-                // Обновляем шкалу прогресса
-                achievement.progressBar.maxValue = achievement.target;
-                achievement.progressBar.value = Mathf.Min(totalClicks, achievement.target);
-
-                // Обновляем текстовое поле
-                string status = achievement.isUnlocked ? "Выполнено" : "Не выполнено";
-                achievement.progressText.text = $"{achievement.name} - {status}\n{Mathf.Min(totalClicks, achievement.target)}/{achievement.target}";
+                if (achievement.isUnlocked)
+                {
+                    achievement.achievementText.text = $"Достижение выполнено: {achievement.achievementName}";
+                    if (achievement.achievementIcon != null)
+                        achievement.achievementIcon.color = Color.green;  // Зеленый цвет для выполненного достижения
+                }
+                else
+                {
+                    achievement.achievementText.text = $"Прогресс: {achievement.currentProgress}/{achievement.maxProgress} - {achievement.achievementName}";
+                    if (achievement.achievementIcon != null)
+                        achievement.achievementIcon.color = Color.red;  // Красный цвет для невыполненного достижения
+                }
             }
         }
+    }
+
+    private void OnApplicationQuit()
+    {
+        SaveAllAchievementsProgress();
+    }
+
+    private void SaveAllAchievementsProgress()
+    {
+        foreach (var achievement in achievements)
+        {
+            SaveAchievementProgress(achievement);  // Сохраняем прогресс каждого достижения
+        }
+    }
+
+    public void SaveAchievementProgress(Achievement achievement)
+    {
+        string progressKey = "AchievementProgress_" + achievement.achievementName;
+        PlayerPrefs.SetInt(progressKey, achievement.currentProgress);  // Сохраняем текущий прогресс
+        PlayerPrefs.Save();
     }
 }

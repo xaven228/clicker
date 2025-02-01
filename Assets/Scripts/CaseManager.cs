@@ -6,97 +6,83 @@ using UnityEngine.UI;
 [System.Serializable]
 public class BackgroundItem
 {
-    public string name; // Название фона
-    public Sprite backgroundSprite; // Спрайт фона
-    public int probability; // Вероятность выпадения (в процентах)
-    public Vector2 size = new Vector2(100, 100); // Размер элемента (ширина и высота)
+    public string name;               // Название фона
+    public Sprite backgroundSprite;   // Спрайт фона
+    public int probability;           // Вероятность выпадения (в процентах)
+    public bool isUnlocked = false;   // Флаг, указывающий, разблокирован ли фон
+}
 
-    // Кнопка заблокированного состояния
-    public Button lockedButton;
+[System.Serializable]
+public class BonusItem
+{
+    public string name;           // Название бонуса
+    public int bonusAmount;       // Количество бонусных кликов
+    public Sprite bonusSprite;    // Спрайт бонуса
+    public int probability;       // Вероятность выпадения бонуса
+}
 
-    // Кнопка разблокированного состояния
-    public Button unlockedButton;
-
-    // Флаг, указывающий, разблокирован ли фон
-    public bool isUnlocked = false;
+[System.Serializable]
+public class RouletteItem
+{
+    public string name;          // Название предмета (фон или бонус)
+    public Sprite itemSprite;    // Спрайт предмета
+    public int probability;      // Шанс выпадения (в процентах)
+    public bool isBonus;         // Это бонус (клики) или фон?
+    public int bonusAmount;      // Количество кликов (если это бонус)
 }
 
 public class CaseManager : MonoBehaviour
 {
-    // Ссылка на Clicker для изменения количества кликов
+    [Header("Ссылки на компоненты")]
     public Clicker clicker;
-
-    // Ссылка на MessageManager для вывода сообщений
     public MessageManager messageManager;
-
-    // Массив доступных фонов с их вероятностями
-    public BackgroundItem[] backgrounds;
-
-    // Цена открытия кейса
-    public int casePrice = 1000;
-
-    // Ссылка на текущий фон (например, Image компонент)
-    public Image currentBackground;
-
-    // Кнопка для открытия кейса
+    public Image currentBackground;  // UI элемент для отображения текущего фона
     public Button openCaseButton;
-
-    // Текстовое поле для отображения результата открытия
     public Text resultText;
-
-    // Панель для рулетки (содержит все спрайты фонов)
     public Transform roulettePanel;
 
-    // Минимальное и максимальное время прокрутки (в секундах)
+    [Header("Настройки кейса")]
+    public BackgroundItem[] backgrounds; // Массив фонов
+    public BonusItem[] bonuses;          // Массив бонусов
+    public int casePrice = 1000;         // Цена кейса
+
+    [Header("Настройки рулетки")]
     public float minSpinDuration = 5f;
     public float maxSpinDuration = 8f;
 
-    // Флаг для блокировки кнопки во время анимации
     private bool isSpinning = false;
-
-    // Список для хранения элементов рулетки
     private List<Image> rouletteItems = new List<Image>();
 
-    // Метод, вызываемый при старте игры
     void Start()
     {
-        // Проверяем, что все ссылки назначены
-        if (openCaseButton == null || currentBackground == null || resultText == null || roulettePanel == null)
+        if (CheckRequiredReferences())
         {
-            Debug.LogError("Не все ссылки назначены в инспекторе!");
-            return;
-        }
-
-        // Создаём элементы рулетки один раз
-        CreateRouletteItems();
-
-        // Подсвечиваем все элементы перед началом игры
-        HighlightAllItems(true);
-
-        // Загружаем состояние фонов
-        foreach (var background in backgrounds)
-        {
-            LoadBackgroundState(background);
-        }
-
-        // Инициализируем кнопки инвентаря
-        InitializeInventoryButtons();
-
-        // Назначаем обработчик события для кнопки открытия кейса
-        openCaseButton.onClick.AddListener(OpenCase);
-
-        // Загружаем выбранный фон
-        BackgroundItem loadedBackground = LoadSelectedBackground();
-        if (loadedBackground != null)
-        {
-            SetBackground(loadedBackground);
+            InitializeCase();
         }
     }
 
-    // Метод для создания элементов рулетки
+    // Проверка наличия всех необходимых ссылок в инспекторе
+    private bool CheckRequiredReferences()
+    {
+        if (openCaseButton == null || currentBackground == null || resultText == null || roulettePanel == null)
+        {
+            Debug.LogError("Не все ссылки назначены в инспекторе!");
+            return false;
+        }
+        return true;
+    }
+
+    // Инициализация рулетки
+    private void InitializeCase()
+    {
+        CreateRouletteItems();
+        openCaseButton.onClick.AddListener(OpenCase);
+    }
+
+    // Создание элементов рулетки
     private void CreateRouletteItems()
     {
-        // Очищаем предыдущие элементы в рулетке
+        // Очищаем старые элементы
         foreach (Transform child in roulettePanel)
         {
             Destroy(child.gameObject);
@@ -104,104 +90,53 @@ public class CaseManager : MonoBehaviour
 
         rouletteItems.Clear();
 
-        // Создаём новые элементы для каждого фона
+        // Создаем фоны
         foreach (var background in backgrounds)
         {
             if (background.backgroundSprite != null)
             {
-                // Создаём новый объект Image
-                GameObject imageObject = new GameObject(background.name, typeof(Image));
-                imageObject.transform.SetParent(roulettePanel, false);
-
-                // Настройка Image
-                Image imageComponent = imageObject.GetComponent<Image>();
-                imageComponent.sprite = background.backgroundSprite;
-                imageComponent.preserveAspect = true; // Сохраняем пропорции спрайта
-
-                // Устанавливаем размеры
-                RectTransform rectTransform = imageObject.GetComponent<RectTransform>();
-                rectTransform.sizeDelta = background.size; // Используем размер из массива
-
-                // Делаем элемент невидимым по умолчанию
-                imageComponent.color = new Color(1, 1, 1, 0); // Прозрачный цвет
-
-                // Добавляем элемент в список
-                rouletteItems.Add(imageComponent);
+                CreateImageItem(background.backgroundSprite, roulettePanel);
             }
         }
-    }
 
-    // Метод для подсветки всех элементов
-    private void HighlightAllItems(bool highlight)
-    {
-        foreach (Image item in rouletteItems)
+        // Создаем бонусы
+        foreach (var bonus in bonuses)
         {
-            if (item != null)
+            if (bonus.bonusSprite != null)
             {
-                item.color = highlight ? Color.white : new Color(1, 1, 1, 0);
+                CreateImageItem(bonus.bonusSprite, roulettePanel);
             }
         }
     }
 
-    // Метод для инициализации кнопок инвентаря
-    private void InitializeInventoryButtons()
+    // Создание изображения для элемента рулетки
+    private void CreateImageItem(Sprite sprite, Transform parent)
     {
-        foreach (var background in backgrounds)
-        {
-            if (background.lockedButton != null && background.unlockedButton != null)
-            {
-                // Заблокированная кнопка видима, если фон не разблокирован
-                background.lockedButton.gameObject.SetActive(!background.isUnlocked);
+        GameObject imageObject = new GameObject("RouletteItem", typeof(Image));
+        imageObject.transform.SetParent(parent, false);
 
-                // Разблокированная кнопка видима, если фон разблокирован
-                background.unlockedButton.gameObject.SetActive(background.isUnlocked);
+        Image imageComponent = imageObject.GetComponent<Image>();
+        imageComponent.sprite = sprite;
+        imageComponent.preserveAspect = true;
 
-                // Добавляем обработчик события для разблокированной кнопки
-                background.unlockedButton.onClick.AddListener(() => SetBackground(background));
-
-                Debug.Log($"Инициализированы кнопки для фона: {background.name}");
-            }
-            else
-            {
-                Debug.LogError($"Кнопки для фона {background.name} не назначены!");
-            }
-        }
+        RectTransform rectTransform = imageObject.GetComponent<RectTransform>();
+        rectTransform.sizeDelta = new Vector2(100, 100); // Размер каждого элемента
     }
 
-    // Метод для открытия кейса
+    // Открытие кейса
     private void OpenCase()
     {
-        // Проверяем, идёт ли уже анимация рулетки
-        if (isSpinning)
+        if (isSpinning) return;
+
+        if (Clicker.GetClickCount() < casePrice)
         {
+            ShowMessage("Недостаточно кликов для открытия кейса!");
             return;
         }
 
-        // Получаем текущее количество кликов
-        int currentClicks = Clicker.GetClickCount();
-
-        // Проверяем, достаточно ли кликов для открытия кейса
-        if (currentClicks < casePrice)
-        {
-            if (messageManager != null)
-            {
-                messageManager.ShowMessage("Недостаточно кликов для открытия кейса!");
-            }
-            else
-            {
-                Debug.LogError("Ссылка на MessageManager не назначена!");
-            }
-            return;
-        }
-
-        // Вычитаем стоимость открытия кейса
         Clicker.AddClicks(-casePrice);
         clicker.UpdateAllScoreTexts();
 
-        // Гасим все элементы перед началом анимации
-        HighlightAllItems(false);
-
-        // Запускаем анимацию рулетки
         StartCoroutine(SpinRoulette());
     }
 
@@ -209,186 +144,145 @@ public class CaseManager : MonoBehaviour
     private IEnumerator SpinRoulette()
     {
         isSpinning = true;
-
-        // Генерируем случайное время прокрутки
         float spinDuration = Random.Range(minSpinDuration, maxSpinDuration);
-
-        // Генерируем случайный результат
-        int randomValue = Random.Range(0, 100); // Число от 0 до 99
-        int cumulativeProbability = 0;
-        BackgroundItem selectedBackground = null;
-
-        foreach (var background in backgrounds)
-        {
-            cumulativeProbability += background.probability;
-
-            if (randomValue < cumulativeProbability)
-            {
-                selectedBackground = background;
-                break;
-            }
-        }
-
-        // Анимация случайного подсвечивания
         float elapsedTime = 0f;
-        int previousIndex = -1;
 
+        // Крутить рулетку
         while (elapsedTime < spinDuration)
         {
-            // Выбираем случайный индекс
-            int randomIndex;
-            do
+            foreach (Transform child in roulettePanel)
             {
-                randomIndex = Random.Range(0, rouletteItems.Count);
-            } while (randomIndex == previousIndex); // Убеждаемся, что индекс не повторяется
-
-            // Делаем предыдущий элемент невидимым
-            if (previousIndex != -1)
-            {
-                rouletteItems[previousIndex].color = new Color(1, 1, 1, 0);
+                child.GetComponent<Image>().color = Color.white;
             }
 
-            // Делаем текущий элемент видимым
-            rouletteItems[randomIndex].color = Color.white;
-
-            // Запоминаем текущий индекс как предыдущий
-            previousIndex = randomIndex;
-
-            // Ждём 0.5 секунды
-            yield return new WaitForSeconds(0.5f);
-
-            // Увеличиваем прошедшее время
-            elapsedTime += 0.5f;
+            yield return new WaitForSeconds(0.2f);
+            elapsedTime += 0.2f;
         }
 
-        // В конце анимации делаем выбранный элемент видимым
-        if (selectedBackground.backgroundSprite != null)
-        {
-            // Находим индекс выбранного элемента
-            int selectedIndex = -1;
-            for (int i = 0; i < backgrounds.Length; i++)
-            {
-                if (backgrounds[i].backgroundSprite == selectedBackground.backgroundSprite)
-                {
-                    selectedIndex = i;
-                    break;
-                }
-            }
+        // Когда рулетка останавливается, получаем результат
+        SpinResult result = GetSpinResult();
+        HandleSpinResult(result);
 
-            if (selectedIndex != -1)
-            {
-                // Гасим все элементы
-                foreach (Image item in rouletteItems)
-                {
-                    item.color = new Color(1, 1, 1, 0);
-                }
-
-                // Делаем выбранный элемент видимым
-                rouletteItems[selectedIndex].color = Color.white;
-
-                // Разблокируем фон
-                UnlockBackground(selectedBackground);
-
-                if (resultText != null)
-                {
-                    resultText.text = $"Вы выиграли: {selectedBackground.name}";
-                }
-
-                if (messageManager != null)
-                {
-                    messageManager.ShowMessage($"Вы выиграли: {selectedBackground.name}");
-                }
-                else
-                {
-                    Debug.LogError("Ссылка на MessageManager не назначена!");
-                }
-            }
-        }
-
-        // Завершаем анимацию
         isSpinning = false;
     }
 
-    // Метод для разблокировки фона
+    // Получить результат спина (фон или бонус)
+    private SpinResult GetSpinResult()
+    {
+        int totalProbability = 0;
+
+        // Рассчитываем общую вероятность
+        foreach (var background in backgrounds)
+        {
+            totalProbability += background.probability;
+        }
+        foreach (var bonus in bonuses)
+        {
+            totalProbability += bonus.probability;
+        }
+
+        int randomValue = Random.Range(0, totalProbability);
+
+        // Проверяем, что выпал фон
+        int cumulativeProbability = 0;
+        foreach (var background in backgrounds)
+        {
+            cumulativeProbability += background.probability;
+            if (randomValue < cumulativeProbability)
+            {
+                return new SpinResult { isBackground = true, background = background };
+            }
+        }
+
+        // Проверяем, что выпал бонус
+        cumulativeProbability = 0;
+        foreach (var bonus in bonuses)
+        {
+            cumulativeProbability += bonus.probability;
+            if (randomValue < cumulativeProbability)
+            {
+                return new SpinResult { isBackground = false, bonus = bonus };
+            }
+        }
+
+        return null;
+    }
+
+    // Обработка результата спина
+    private void HandleSpinResult(SpinResult result)
+    {
+        if (result.isBackground)
+        {
+            UnlockBackground(result.background);
+            ShowMessage($"Вы выиграли фон: {result.background.name}");
+            SetBackground(result.background); // Устанавливаем фоновое изображение
+        }
+        else
+        {
+            AddBonusClicks(result.bonus);
+            ShowMessage($"Вы выиграли бонус: {result.bonus.name}!");
+        }
+    }
+
+    // Разблокировка фона
     private void UnlockBackground(BackgroundItem background)
     {
         if (!background.isUnlocked)
         {
             background.isUnlocked = true;
-
-            // Скрываем заблокированную кнопку
-            if (background.lockedButton != null)
-            {
-                background.lockedButton.gameObject.SetActive(false);
-            }
-
-            // Показываем разблокированную кнопку
-            if (background.unlockedButton != null)
-            {
-                background.unlockedButton.gameObject.SetActive(true);
-            }
-
-            // Сохраняем состояние фона
             SaveBackgroundState(background);
-
-            Debug.Log($"Фон '{background.name}' разблокирован!");
         }
     }
 
-    // Метод для установки нового фона
-    public void SetBackground(BackgroundItem background)
+    // Добавление бонусных кликов
+    private void AddBonusClicks(BonusItem bonus)
     {
-        if (currentBackground != null && background.backgroundSprite != null)
-        {
-            currentBackground.sprite = background.backgroundSprite;
-            Debug.Log($"Фон изменён на: {background.name}");
-
-            // Сохраняем выбранный фон
-            SaveSelectedBackground(background);
-        }
+        Clicker.AddClicks(bonus.bonusAmount);
+        clicker.UpdateAllScoreTexts();
     }
 
-    // Метод для сохранения состояния фона
+    // Сохранение состояния фона
     private void SaveBackgroundState(BackgroundItem background)
     {
         string key = $"Background_{background.name}_IsUnlocked";
         PlayerPrefs.SetInt(key, background.isUnlocked ? 1 : 0);
         PlayerPrefs.Save();
-        Debug.Log($"Состояние фона '{background.name}' сохранено: {background.isUnlocked}");
     }
 
-    // Метод для загрузки состояния фона
-    private void LoadBackgroundState(BackgroundItem background)
+    // Метод для установки выбранного фона
+    public void SetBackground(BackgroundItem background)
     {
-        string key = $"Background_{background.name}_IsUnlocked";
-        background.isUnlocked = PlayerPrefs.GetInt(key, 0) == 1;
-        Debug.Log($"Состояние фона '{background.name}' загружено: {background.isUnlocked}");
+        if (currentBackground != null && background.backgroundSprite != null)
+        {
+            currentBackground.sprite = background.backgroundSprite;
+            SaveSelectedBackground(background);
+        }
     }
 
-    // Метод для сохранения выбранного фона
+    // Сохранение выбранного фона
     private void SaveSelectedBackground(BackgroundItem background)
     {
-        if (background != null)
-        {
-            PlayerPrefs.SetString("SelectedBackground", background.name);
-            PlayerPrefs.Save();
-            Debug.Log($"Выбранный фон '{background.name}' сохранён.");
-        }
+        PlayerPrefs.SetString("SelectedBackground", background.name);
+        PlayerPrefs.Save();
     }
 
-    // Метод для загрузки выбранного фона
-    private BackgroundItem LoadSelectedBackground()
+    // Показ сообщения
+    private void ShowMessage(string message)
     {
-        string selectedBackgroundName = PlayerPrefs.GetString("SelectedBackground", "");
-        foreach (var background in backgrounds)
+        if (messageManager != null)
         {
-            if (background.name == selectedBackgroundName && background.isUnlocked)
-            {
-                Debug.Log($"Загружен выбранный фон: {background.name}");
-                return background;
-            }
+            messageManager.ShowMessage(message);
         }
-        Debug.Log("Выбранный фон не найден или заблокирован.");
-        return null;
+        else
+        {
+            Debug.Log(message);
+        }
     }
+}
+
+public class SpinResult
+{
+    public bool isBackground;
+    public BackgroundItem background;
+    public BonusItem bonus;
 }

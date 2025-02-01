@@ -2,82 +2,68 @@ using UnityEngine;
 
 public class ResetData : MonoBehaviour
 {
-    // Ссылка на Clicker для сброса кликов и множителя
-    public Clicker clicker;
+    [Header("References")]
+    [SerializeField] private Clicker clicker;
+    [SerializeField] private AchievementManager achievementManager;
+    [SerializeField] private UpgradeManager upgradeManager;
+    [SerializeField] private SpriteRenderer background;
 
-    // Ссылка на AchievementManager для сброса достижений
-    public AchievementManager achievementManager;
-
-    // Ссылка на UpgradeManager для сброса улучшений
-    public UpgradeManager upgradeManager;
-
-    // Ссылка на объект фона
-    public SpriteRenderer background;
-
-    // Начальный спрайт фона
-    public Sprite defaultBackground;
+    [Header("Default Settings")]
+    [SerializeField] private Sprite defaultBackground;
 
     // Метод для полного сброса данных
     public void ResetAllData()
     {
-        // Сбрасываем данные в Clicker
+        ResetClickerData();
+        ResetAchievementData();
+        ResetInventoryData();
+        ResetBackgroundData();
+        ClearPlayerPrefs();
+
+        Debug.Log("Все данные сброшены!");
+
+        // Обновляем интерфейс
+        UpdateScoreUI();
+    }
+
+    // Сброс данных для Clicker
+    private void ResetClickerData()
+    {
         if (clicker != null)
         {
+            // Если ResetProgress() статический, вызываем его через класс Clicker
             Clicker.ResetProgress();
         }
+    }
 
-        // Сбрасываем данные в AchievementManager
+
+    // Сброс данных для AchievementManager
+    private void ResetAchievementData()
+    {
         if (achievementManager != null)
         {
             foreach (var achievement in achievementManager.achievements)
             {
                 achievement.isUnlocked = false;
-                achievementManager.SaveAchievementProgress(achievement);
+
+                // Сохраняем сброшенное достижение в PlayerPrefs
+                string unlockedKey = "AchievementUnlocked_" + achievement.achievementName;
+                PlayerPrefs.SetInt(unlockedKey, 0); // 0 означает, что достижение не выполнено
             }
 
             // Обновляем интерфейс достижений
             achievementManager.UpdateAchievementUI();
         }
-
-        // Сбрасываем данные в UpgradeManager (инвентарь)
-        ResetInventory();
-
-        // Сбрасываем фон
-        ResetBackground();
-
-        // Очищаем PlayerPrefs
-        PlayerPrefs.DeleteAll();
-        PlayerPrefs.Save();
-
-        Debug.Log("Все данные сброшены!");
-
-        // Обновляем интерфейс
-        if (clicker != null)
-        {
-            clicker.UpdateAllScoreTexts();
-        }
     }
 
-    // Метод для сброса инвентаря (улучшений)
-    private void ResetInventory()
+    // Сброс данных для инвентаря и улучшений
+    private void ResetInventoryData()
     {
         if (upgradeManager != null)
         {
             foreach (var upgrade in upgradeManager.upgrades)
             {
-                // Сбрасываем состояние улучшения
-                upgrade.isPurchased = false;
-
-                // Восстанавливаем интерфейс улучшений
-                if (upgrade.upgradeButton != null)
-                {
-                    upgrade.upgradeButton.interactable = true; // Делаем кнопку активной
-                }
-
-                if (upgrade.priceText != null)
-                {
-                    upgrade.priceText.text = "Цена: " + upgrade.price; // Восстанавливаем текст цены
-                }
+                ResetUpgradeData(upgrade);
             }
 
             // Сбрасываем глобальный множитель
@@ -87,13 +73,46 @@ public class ResetData : MonoBehaviour
         }
     }
 
-    // Метод для сброса фона
-    private void ResetBackground()
+    // Сброс состояния отдельного улучшения
+    private void ResetUpgradeData(Upgrade upgrade)
+    {
+        upgrade.isPurchased = false;
+
+        // Восстанавливаем интерфейс улучшений
+        if (upgrade.upgradeButton != null)
+        {
+            upgrade.upgradeButton.interactable = true; // Делаем кнопку активной
+        }
+
+        if (upgrade.priceText != null)
+        {
+            upgrade.priceText.text = "Цена: " + upgrade.price; // Восстанавливаем текст цены
+        }
+    }
+
+    // Сброс фона
+    private void ResetBackgroundData()
     {
         if (background != null && defaultBackground != null)
         {
             background.sprite = defaultBackground;
             Debug.Log("Фон сброшен.");
+        }
+    }
+
+    // Очищаем PlayerPrefs
+    private void ClearPlayerPrefs()
+    {
+        PlayerPrefs.DeleteAll();
+        PlayerPrefs.Save();
+    }
+
+    // Обновление интерфейса с текстами счёта
+    private void UpdateScoreUI()
+    {
+        if (clicker != null)
+        {
+            clicker.UpdateAllScoreTexts();
         }
     }
 }
