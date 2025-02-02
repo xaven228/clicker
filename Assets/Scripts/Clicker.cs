@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 public class Clicker : MonoBehaviour
 {
@@ -17,7 +18,7 @@ public class Clicker : MonoBehaviour
 
 	// Статическая переменная для доступа к экземпляру Clicker
 	public static Clicker Instance;
-	
+
 	// Глобальный множитель кликов
 	private static float globalMultiplier = 1f;
 
@@ -32,6 +33,9 @@ public class Clicker : MonoBehaviour
 	public float clicksPerSecondLimit = 10f; // Лимит кликов в секунду, настраиваемый в инспекторе
 	private float lastClickTime = 0f; // Время последнего клика
 	private int clicksThisSecond = 0; // Количество кликов за текущую секунду
+
+	// Список для хранения активных предметов
+	private static List<string> activatedItems = new List<string>(); // Массив активированных предметов (фонов)
 
 	// Публичный геттер для получения количества кликов
 	public static int GetClickCount()
@@ -51,7 +55,7 @@ public class Clicker : MonoBehaviour
 	{
 		_clickCount += Mathf.RoundToInt(amount * globalMultiplier); // Учитываем множитель
 		SaveData(CLICK_COUNT_KEY, _clickCount);
-		
+
 		// Триггерим событие после добавления кликов
 		OnClickAdded?.Invoke(amount);  // Вызов события с количеством добавленных кликов
 	}
@@ -95,6 +99,16 @@ public class Clicker : MonoBehaviour
 	{
 		PlayerPrefs.SetFloat(key, value);
 		PlayerPrefs.Save();
+	}
+
+	// Метод для отображения уведомлений
+	public void ShowNotification(string message)
+	{
+		// Тут можно реализовать логику для UI уведомлений.
+		// Например, показать текстовое уведомление на экране.
+
+		Debug.Log(message); // Временно выводим сообщение в консоль
+		// Можно добавить компонент для UI, например Text или Image, чтобы выводить это сообщение.
 	}
 
 	// Метод, вызываемый при старте игры
@@ -147,7 +161,7 @@ public class Clicker : MonoBehaviour
 		lastClickTime = Time.time; // Обновляем время последнего клика
 	}
 
-		void Awake()
+	void Awake()
 	{
 		// Убедимся, что Instance всегда ссылается на текущий объект Clicker
 		if (Instance == null)
@@ -159,7 +173,7 @@ public class Clicker : MonoBehaviour
 			Destroy(gameObject);  // Уничтожаем лишний экземпляр
 		}
 	}
-	
+
 	// Метод для обновления всех текстовых полей
 	public void UpdateAllScoreTexts()
 	{
@@ -189,6 +203,9 @@ public class Clicker : MonoBehaviour
 		PlayerPrefs.Save();
 		Debug.Log("Прогресс сброшен.");
 	}
+
+
+
 
 	// Метод, вызываемый каждый кадр
 	void Update()

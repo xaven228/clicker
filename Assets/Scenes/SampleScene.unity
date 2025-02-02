@@ -2265,38 +2265,48 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   caseItems:
-  - name: naruto
+  - itemName: naruto
     itemSprite: {fileID: 21300000, guid: d5b0dbe2d3d4ca24e88fd9d073bcebaa, type: 3}
     spawnChance: 0.01
     lockedButton: {fileID: 923625952}
     unlockButton: {fileID: 929272170}
     backgroundSprite: {fileID: 21300000, guid: d5b0dbe2d3d4ca24e88fd9d073bcebaa, type: 3}
-  - name: home
+    bonusClicks: 10000
+    isActivated: 0
+  - itemName: home
     itemSprite: {fileID: 21300000, guid: 7d2d5ffe12ee3694087d57bcdc339d7c, type: 3}
     spawnChance: 0.25
     lockedButton: {fileID: 1431234519}
     unlockButton: {fileID: 1458995087}
     backgroundSprite: {fileID: 21300000, guid: 7d2d5ffe12ee3694087d57bcdc339d7c, type: 3}
-  - name: mount
+    bonusClicks: 100
+    isActivated: 0
+  - itemName: mount
     itemSprite: {fileID: 21300000, guid: d1be3e9c6724e14469cbed11540f98ce, type: 3}
     spawnChance: 0.25
     lockedButton: {fileID: 861331847}
     unlockButton: {fileID: 868918828}
     backgroundSprite: {fileID: 21300000, guid: d1be3e9c6724e14469cbed11540f98ce, type: 3}
-  - name: color
+    bonusClicks: 100
+    isActivated: 0
+  - itemName: color
     itemSprite: {fileID: 21300000, guid: 016127016e47cc647b3964fb6385485b, type: 3}
     spawnChance: 0.25
     lockedButton: {fileID: 2035645482}
     unlockButton: {fileID: 1833300999}
     backgroundSprite: {fileID: 21300000, guid: 016127016e47cc647b3964fb6385485b, type: 3}
-  - name: city
+    bonusClicks: 100
+    isActivated: 0
+  - itemName: city
     itemSprite: {fileID: 21300000, guid: 2189dd93ce518134d8d0ee98b9cb94bf, type: 3}
     spawnChance: 0.24
     lockedButton: {fileID: 544480538}
     unlockButton: {fileID: 1638672457}
     backgroundSprite: {fileID: 21300000, guid: 2189dd93ce518134d8d0ee98b9cb94bf, type: 3}
+    bonusClicks: 100
+    isActivated: 0
   totalItemsCount: 1000
-  clickCost: 10
+  clickCost: 1000
   roulettePanel: {fileID: 1808857628}
   itemPrefab: {fileID: 601100913}
   itemSpacing: 100

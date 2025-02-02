@@ -33,9 +33,12 @@ public class ResetData : MonoBehaviour
         {
             // Если ResetProgress() статический, вызываем его через класс Clicker
             Clicker.ResetProgress();
+
+            // Сбрасываем все клики и множители до нуля
+            Clicker.SetGlobalMultiplier(1f);
+            Clicker.RemoveClicks(Clicker.GetClickCount()); // Убираем все клики
         }
     }
-
 
     // Сброс данных для AchievementManager
     private void ResetAchievementData()
@@ -65,11 +68,6 @@ public class ResetData : MonoBehaviour
             {
                 ResetUpgradeData(upgrade);
             }
-
-            // Сбрасываем глобальный множитель
-            Clicker.SetGlobalMultiplier(1f);
-
-            Debug.Log("Инвентарь сброшен.");
         }
     }
 
