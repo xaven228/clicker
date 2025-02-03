@@ -4,20 +4,19 @@ using UnityEngine.UI;
 [System.Serializable]
 public class Achievement
 {
-    public string achievementName;  // Название достижения
-    public string description;      // Описание достижения
-    public int maxProgress;         // Максимальный прогресс (например, 100 или 1000)
-    public int currentProgress;     // Текущий прогресс
-    public bool isUnlocked;         // Статус выполнения достижения
+    public string achievementName;
+    public string description;
+    public int maxProgress;
+    public int currentProgress;
+    public bool isUnlocked;
 
-    // Для отображения статуса
-    public Text achievementText;    // Текстовое поле для отображения статуса
-    public Image achievementIcon;   // Иконка для отображения статуса
+    public Text achievementText;
+    public Slider progressBar; // Добавлен слайдер прогресса
 }
 
 public class AchievementManager : MonoBehaviour
 {
-    public Achievement[] achievements;  // Массив достижений
+    public Achievement[] achievements;
     public Clicker clicker;
     public MessageManager messageManager;
 
@@ -37,7 +36,7 @@ public class AchievementManager : MonoBehaviour
     {
         LoadAchievements();
         CheckAchievements(0);
-        CheckInitialAchievements(); // Проверка достижений при запуске игры
+        CheckInitialAchievements();
     }
 
     public void CheckAchievements(int addedClicks)
@@ -59,7 +58,7 @@ public class AchievementManager : MonoBehaviour
                 }
             }
         }
-        
+
         UpdateAchievementUI();
     }
 
@@ -106,16 +105,19 @@ public class AchievementManager : MonoBehaviour
             {
                 if (achievement.isUnlocked)
                 {
-                    achievement.achievementText.text = $"{achievement.achievementName}: Выполнено!";
-                    if (achievement.achievementIcon != null)
-                        achievement.achievementIcon.color = Color.green;
+                    achievement.achievementText.text = $"Выполнено!";
                 }
                 else
                 {
-                    achievement.achievementText.text = $"{achievement.achievementName}: {achievement.currentProgress}/{achievement.maxProgress}";
-                    if (achievement.achievementIcon != null)
-                        achievement.achievementIcon.color = Color.red;
+                    achievement.achievementText.text = $"{achievement.currentProgress}/{achievement.maxProgress}";
                 }
+            }
+
+            if (achievement.progressBar != null)
+            {
+                achievement.progressBar.maxValue = achievement.maxProgress;
+                achievement.progressBar.value = achievement.currentProgress;
+                achievement.progressBar.interactable = false; // Блокируем слайдер от изменения вручную
             }
         }
     }
@@ -132,6 +134,11 @@ public class AchievementManager : MonoBehaviour
             SaveAchievementProgress(achievement);
         }
     }
+	private void Awake()
+	{
+		LoadAchievements();
+		CheckAchievements(0); // Проверяем, не выполнены ли уже какие-то достижения
+	}
 
     public void SaveAchievementProgress(Achievement achievement)
     {
