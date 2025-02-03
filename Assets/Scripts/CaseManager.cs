@@ -34,6 +34,7 @@ public class RouletteManager : MonoBehaviour
 
 	// Ссылка на MessageManager для отображения сообщений
 	public MessageManager messageManager;  // Ссылка на объект MessageManager
+	public AchievementManager achievementManager; // Добавляем ссылку на AchievementManagerи
 
 	// Метод для изменения фона
 	public void ChangeBackground(Sprite newBackground)
@@ -50,6 +51,10 @@ public class RouletteManager : MonoBehaviour
 
 	void Awake()
 	{
+		    if (achievementManager == null)
+    {
+        achievementManager = FindFirstObjectByType<AchievementManager>(); // Новый метод поиска
+    }
 		// Проверяем, если уже есть экземпляр, то удаляем этот объект
 		if (Instance != null && Instance != this)
 		{
@@ -64,16 +69,16 @@ public class RouletteManager : MonoBehaviour
 	// Метод для загрузки фона при старте игры
 private void LoadSelectedBackground()
 {
-    string selectedBackgroundName = PlayerPrefs.GetString("SelectedBackground", "");
-    if (!string.IsNullOrEmpty(selectedBackgroundName))
-    {
-        // Ищем предмет по имени, если оно найдено, меняем фон
-        CaseItem selectedItem = caseItems.Find(item => item.itemName == selectedBackgroundName);
-        if (selectedItem != null && selectedItem.backgroundSprite != null)
-        {
-            backgroundImage.sprite = selectedItem.backgroundSprite;
-        }
-    }
+	string selectedBackgroundName = PlayerPrefs.GetString("SelectedBackground", "");
+	if (!string.IsNullOrEmpty(selectedBackgroundName))
+	{
+		// Ищем предмет по имени, если оно найдено, меняем фон
+		CaseItem selectedItem = caseItems.Find(item => item.itemName == selectedBackgroundName);
+		if (selectedItem != null && selectedItem.backgroundSprite != null)
+		{
+			backgroundImage.sprite = selectedItem.backgroundSprite;
+		}
+	}
 }
 
 void Start()
@@ -293,75 +298,58 @@ void Start()
 
 private void HandleSpinResult(int winningIndex)
 {
-	// Получаем предмет по индексу
-	CaseItem resultItem = rouletteItems[winningIndex];
+    CaseItem resultItem = rouletteItems[winningIndex];
 
-	// Сохраняем количество кликов до добавления бонусов
-	int previousClickCount = Clicker.GetClickCount();
+    // Сохраняем количество кликов до начисления бонусов
+    int previousClickCount = Clicker.GetClickCount();
 
-	// Выводим результат в консоль для отладки
-	Debug.Log($"Поздравляем! Вы выиграли: {resultItem.itemName}");
+    Debug.Log($"Поздравляем! Вы выиграли: {resultItem.itemName}");
 
-	// Загружаем состояние активации для предмета (на случай, если игра не обновила)
-	resultItem.LoadActivationState();
+    // Загружаем состояние активации предмета
+    resultItem.LoadActivationState();
 
-	// Проверяем, был ли предмет уже активирован
-	if (resultItem.isActivated)
-	{
-		// Если предмет уже активирован, начисляем бонус
-		// Добавляем бонус без учета множителя
-		Clicker.AddClicks(resultItem.bonusClicks); // Добавляем фиксированный бонус
-		Debug.Log($"Предмет {resultItem.itemName} уже активирован. Вам начислен бонус: {resultItem.bonusClicks} кликов.");
+    if (resultItem.isActivated)
+    {
+        // Если предмет уже активирован, начисляем бонус
+        Clicker.AddClicks(resultItem.bonusClicks);
+        Debug.Log($"Предмет {resultItem.itemName} уже активирован. Вам начислен бонус: {resultItem.bonusClicks} кликов.");
 
-		// После добавления бонусов, вычисляем разницу
-		int addedClicks = Clicker.GetClickCount() - previousClickCount;
-		Debug.Log($"Бонус начислен: {addedClicks} кликов.");
+        int addedClicks = Clicker.GetClickCount() - previousClickCount;
+        Debug.Log($"Бонус начислен: {addedClicks} кликов.");
 
-		// Показываем сообщение через MessageManager
-		if (messageManager != null)
-		{
-			messageManager.ShowMessage($"Предмет открыт, вы получили бонус: {addedClicks} кликов.");
-		}
-	}
-	else
-	{
-		// Если предмет ещё не активирован, активируем его и даём бонус
-		// Изменяем фон на указанный для этого предмета
-		if (backgroundImage != null && resultItem.backgroundSprite != null)
-		{
-			backgroundImage.sprite = resultItem.backgroundSprite;  // Меняем фон
-		}
+        if (messageManager != null)
+        {
+            messageManager.ShowMessage($"Предмет открыт, вы получили бонус: {addedClicks} кликов.");
+        }
 
-		// Обновляем состояние кнопок
-		EnableUnlockButton(resultItem);
+        // Вызов проверки достижений после начисления кликов
+        if (achievementManager != null)
+        {
+            achievementManager.CheckAchievements(addedClicks);
+        }
+    }
+    else
+    {
+        // Если предмет не был активирован, просто активируем его без бонусов
+        resultItem.isActivated = true;
+        resultItem.SaveActivationState();
 
-		// Показываем сообщение через MessageManager
-		if (messageManager != null)
-		{
-			messageManager.ShowMessage($"Поздравляем! Вы выиграли: {resultItem.itemName}");
-		}
+        // Изменяем фон
+        if (backgroundImage != null && resultItem.backgroundSprite != null)
+        {
+            backgroundImage.sprite = resultItem.backgroundSprite;
+        }
 
-		// Если предмет активирован, начисляем бонус кликов
-		// Бонус не зависит от множителя кликов
-		Clicker.AddClicks(resultItem.bonusClicks); // Добавляем фиксированный бонус кликов
-		Debug.Log($"Получено бонусных кликов: {resultItem.bonusClicks}");
+        EnableUnlockButton(resultItem);
 
-		// После добавления бонусов, вычисляем разницу
-		int addedClicks = Clicker.GetClickCount() - previousClickCount;
-		Debug.Log($"Бонус начислен: {addedClicks} кликов.");
+        if (messageManager != null)
+        {
+            messageManager.ShowMessage($"Поздравляем! Вы выиграли: {resultItem.itemName}");
+        }
 
-		// Устанавливаем, что предмет теперь активирован
-		resultItem.isActivated = true;
-
-		// Сохраняем состояние активации предмета
-		resultItem.SaveActivationState();
-	}
+        Debug.Log($"Предмет {resultItem.itemName} активирован. Бонус НЕ начисляется при первом получении.");
+    }
 }
-
-
-
-
-
 
 
 
@@ -516,19 +504,19 @@ public class CaseItem
 // Метод для активации фона
 public void ActivateItem()
 {
-    if (backgroundSprite != null)
-    {
-        // Меняем фон
-        RouletteManager.Instance.ChangeBackground(backgroundSprite);
-        
-        // Сохраняем выбранный фон
-        PlayerPrefs.SetString("SelectedBackground", itemName);
-        PlayerPrefs.Save();
-    }
-    else
-    {
-        Debug.LogWarning("backgroundSprite не задан для предмета!");
-    }
+	if (backgroundSprite != null)
+	{
+		// Меняем фон
+		RouletteManager.Instance.ChangeBackground(backgroundSprite);
+		
+		// Сохраняем выбранный фон
+		PlayerPrefs.SetString("SelectedBackground", itemName);
+		PlayerPrefs.Save();
+	}
+	else
+	{
+		Debug.LogWarning("backgroundSprite не задан для предмета!");
+	}
 }
 
 }

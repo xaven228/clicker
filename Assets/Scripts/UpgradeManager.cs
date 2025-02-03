@@ -4,32 +4,29 @@ using UnityEngine.UI;
 [System.Serializable]
 public class Upgrade
 {
-    public string upgradeName; // Название улучшения
-    public int price; // Цена улучшения
-    public float bonusMultiplier; // Бонус (множитель)
-    public Button upgradePrefab; // Префаб кнопки, который появляется над кнопкой после покупки
-    public Button upgradeButton; // Кнопка для покупки улучшения
-    public Text priceText; // Текстовое поле для отображения цены
+    public string upgradeName;
+    public int price;
+    public float bonusMultiplier;
+    public Button upgradePrefab;
+    public Button upgradeButton;
+    public Text priceText;
 
-    // Флаг, указывающий, куплено ли улучшение
     public bool isPurchased = false;
 }
 
 public class UpgradeManager : MonoBehaviour
 {
-    public Clicker clicker; // Ссылка на скрипт кликера для доступа к счётчику кликов
-    public MessageManager messageManager; // Ссылка на MessageManager для вывода сообщений
-    public Upgrade[] upgrades; // Массив улучшений
+    public Clicker clicker;
+    public MessageManager messageManager;
+    public Upgrade[] upgrades;
 
-    private const string PURCHASED_KEY_PREFIX = "UpgradePurchased_"; // Префикс для ключей PlayerPrefs
+    private const string PURCHASED_KEY_PREFIX = "UpgradePurchased_";
 
-    // Метод, вызываемый при старте игры
     void Start()
     {
         InitializeUpgrades();
     }
 
-    // Инициализация всех улучшений
     private void InitializeUpgrades()
     {
         foreach (var upgrade in upgrades)
@@ -38,7 +35,6 @@ public class UpgradeManager : MonoBehaviour
             {
                 LoadUpgradeState(upgrade);
 
-                // Назначаем обработчик события для кнопки
                 if (!upgrade.isPurchased)
                 {
                     upgrade.upgradeButton.onClick.AddListener(() => TryPurchaseUpgrade(upgrade));
@@ -47,7 +43,6 @@ public class UpgradeManager : MonoBehaviour
         }
     }
 
-    // Метод для загрузки состояния улучшения из PlayerPrefs
     private void LoadUpgradeState(Upgrade upgrade)
     {
         string key = PURCHASED_KEY_PREFIX + upgrade.upgradeName;
@@ -64,12 +59,10 @@ public class UpgradeManager : MonoBehaviour
         }
     }
 
-    // Метод для попытки покупки улучшения
     private void TryPurchaseUpgrade(Upgrade upgrade)
     {
         int currentClicks = Clicker.GetClickCount();
 
-        // Проверяем, достаточно ли кликов для покупки
         if (currentClicks >= upgrade.price && !upgrade.isPurchased)
         {
             PurchaseUpgrade(upgrade, currentClicks);
@@ -80,24 +73,19 @@ public class UpgradeManager : MonoBehaviour
         }
     }
 
-    // Покупка улучшения
     private void PurchaseUpgrade(Upgrade upgrade, int currentClicks)
     {
-        // Вычитаем стоимость улучшения из счётчика кликов
         Clicker.SetClickCount(currentClicks - upgrade.price);
-        clicker.UpdateAllScoreTexts(); // Обновляем текстовые поля счётчика
+        clicker.UpdateAllScoreTexts();
 
-        // Применяем бонус (множитель)
-        ApplyBonus(upgrade.bonusMultiplier);
+        // Изменённый метод: теперь множитель умножается
+        Clicker.MultiplyGlobalMultiplier(upgrade.bonusMultiplier);
 
-        // Создаём префаб кнопки над кнопкой
         InstantiateUpgradeButton(upgrade);
 
-        // Обновляем состояние кнопки
         upgrade.upgradeButton.interactable = false;
         upgrade.priceText.text = "Куплено!";
 
-        // Сохраняем состояние улучшения
         upgrade.isPurchased = true;
         string key = PURCHASED_KEY_PREFIX + upgrade.upgradeName;
         PlayerPrefs.SetInt(key, 1);
@@ -105,31 +93,19 @@ public class UpgradeManager : MonoBehaviour
 
         Debug.Log($"Сохранено улучшение: {key}");
 
-        // Показываем сообщение о успешной покупке
         ShowUpgradeMessage();
     }
 
-    // Метод для применения бонуса (множителя)
-    private void ApplyBonus(float bonusMultiplier)
-    {
-        Clicker.IncreaseGlobalMultiplier(bonusMultiplier - 1); // Вычитаем 1, так как базовый множитель уже равен 1
-        Debug.Log($"Глобальный множитель теперь: {Clicker.GetGlobalMultiplier()}");
-
-        clicker.UpdateAllScoreTexts(); // Обновляем текстовые поля счётчика
-    }
-
-    // Метод для создания префаба кнопки
     private void InstantiateUpgradeButton(Upgrade upgrade)
     {
         if (upgrade.upgradePrefab != null)
         {
             Button instantiatedButton = Instantiate(upgrade.upgradePrefab, upgrade.upgradeButton.transform);
-            instantiatedButton.transform.localPosition = Vector3.zero; // Центрируем кнопку
-            instantiatedButton.interactable = false; // Делаем кнопку неактивной
+            instantiatedButton.transform.localPosition = Vector3.zero;
+            instantiatedButton.interactable = false;
         }
     }
 
-    // Метод для обновления текста цены
     private void UpdatePriceText(Upgrade upgrade)
     {
         if (upgrade.priceText != null)
@@ -138,7 +114,6 @@ public class UpgradeManager : MonoBehaviour
         }
     }
 
-    // Метод для отметки улучшения как купленного
     private void MarkAsPurchased(Upgrade upgrade)
     {
         upgrade.upgradeButton.interactable = false;
@@ -146,7 +121,6 @@ public class UpgradeManager : MonoBehaviour
         InstantiateUpgradeButton(upgrade);
     }
 
-    // Показываем сообщение о недостаточности средств
     private void ShowInsufficientFundsMessage()
     {
         if (messageManager != null)
@@ -155,7 +129,6 @@ public class UpgradeManager : MonoBehaviour
         }
     }
 
-    // Показываем сообщение о успешной покупке
     private void ShowUpgradeMessage()
     {
         if (messageManager != null)

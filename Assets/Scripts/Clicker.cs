@@ -4,213 +4,158 @@ using System.Collections.Generic;
 
 public class Clicker : MonoBehaviour
 {
-	// Ссылка на текстовое поле для отображения счётчика (основное)
-	public Text scoreText;
+    public Text scoreText;
+    public Text[] additionalScoreTexts;
+    public Button clickButton;
 
-	// Массив текстовых полей, куда будут копироваться данные счётчика
-	public Text[] additionalScoreTexts;
+    private static int _clickCount = 0;
+    public static Clicker Instance;
 
-	// Ссылка на кнопку, по которой будут работать клики
-	public Button clickButton;
+    private static float globalMultiplier = 1f;
 
-	// Статическая переменная для хранения количества кликов
-	private static int _clickCount = 0;
+    public static event System.Action<int> OnClickAdded;
 
-	// Статическая переменная для доступа к экземпляру Clicker
-	public static Clicker Instance;
+    private const string CLICK_COUNT_KEY = "ClickCount";
+    private const string MULTIPLIER_KEY = "GlobalMultiplier";
 
-	// Глобальный множитель кликов
-	private static float globalMultiplier = 1f;
+    public float clicksPerSecondLimit = 10f;
+    private float lastClickTime = 0f;
+    private int clicksThisSecond = 0;
 
-	// Событие для добавления кликов
-	public static event System.Action<int> OnClickAdded;
+    private static List<string> activatedItems = new List<string>();
 
-	// Ключи для PlayerPrefs
-	private const string CLICK_COUNT_KEY = "ClickCount";
-	private const string MULTIPLIER_KEY = "GlobalMultiplier";
+    public static int GetClickCount()
+    {
+        return _clickCount;
+    }
 
-	// Публичное поле для лимита кликов в секунду
-	public float clicksPerSecondLimit = 10f; // Лимит кликов в секунду, настраиваемый в инспекторе
-	private float lastClickTime = 0f; // Время последнего клика
-	private int clicksThisSecond = 0; // Количество кликов за текущую секунду
+    public static void SetClickCount(int value)
+    {
+        _clickCount = value;
+        SaveData(CLICK_COUNT_KEY, _clickCount);
+    }
 
-	// Список для хранения активных предметов
-	private static List<string> activatedItems = new List<string>(); // Массив активированных предметов (фонов)
+    public static void AddClicks(int amount)
+    {
+        _clickCount += Mathf.RoundToInt(amount * globalMultiplier);
+        SaveData(CLICK_COUNT_KEY, _clickCount);
+        OnClickAdded?.Invoke(amount);
+    }
 
-	// Публичный геттер для получения количества кликов
-	public static int GetClickCount()
-	{
-		return _clickCount;
-	}
+    public static void RemoveClicks(int amount)
+    {
+        _clickCount = Mathf.Max(0, _clickCount - amount);
+        SaveData(CLICK_COUNT_KEY, _clickCount);
+    }
 
-	// Публичный метод для установки количества кликов
-	public static void SetClickCount(int value)
-	{
-		_clickCount = value;
-		SaveData(CLICK_COUNT_KEY, _clickCount);
-	}
+    public static void SetGlobalMultiplier(float multiplier)
+    {
+        globalMultiplier = multiplier;
+        SaveData(MULTIPLIER_KEY, globalMultiplier);
+    }
 
-	// Метод для увеличения количества кликов
-	public static void AddClicks(int amount)
-	{
-		_clickCount += Mathf.RoundToInt(amount * globalMultiplier); // Учитываем множитель
-		SaveData(CLICK_COUNT_KEY, _clickCount);
+    public static float GetGlobalMultiplier()
+    {
+        return globalMultiplier;
+    }
 
-		// Триггерим событие после добавления кликов
-		OnClickAdded?.Invoke(amount);  // Вызов события с количеством добавленных кликов
-	}
+    // Изменённый метод: теперь множитель умножается
+    public static void MultiplyGlobalMultiplier(float multiplier)
+    {
+        globalMultiplier *= multiplier;
+        SaveData(MULTIPLIER_KEY, globalMultiplier);
+    }
 
-	// Новый метод для уменьшения количества кликов
-	public static void RemoveClicks(int amount)
-	{
-		_clickCount = Mathf.Max(0, _clickCount - amount); // Уменьшаем клики, не позволяя уйти в минус
-		SaveData(CLICK_COUNT_KEY, _clickCount);
-	}
+    private static void SaveData(string key, int value)
+    {
+        PlayerPrefs.SetInt(key, value);
+        PlayerPrefs.Save();
+    }
 
-	// Метод для установки глобального множителя
-	public static void SetGlobalMultiplier(float multiplier)
-	{
-		globalMultiplier = multiplier;
-		SaveData(MULTIPLIER_KEY, globalMultiplier);
-	}
+    private static void SaveData(string key, float value)
+    {
+        PlayerPrefs.SetFloat(key, value);
+        PlayerPrefs.Save();
+    }
 
-	// Метод для получения глобального множителя
-	public static float GetGlobalMultiplier()
-	{
-		return globalMultiplier;
-	}
+    public void ShowNotification(string message)
+    {
+        Debug.Log(message);
+    }
 
-	// Метод для увеличения глобального множителя
-	public static void IncreaseGlobalMultiplier(float amount)
-	{
-		globalMultiplier += amount;
-		SaveData(MULTIPLIER_KEY, globalMultiplier);
-	}
+    void Start()
+    {
+        _clickCount = PlayerPrefs.GetInt(CLICK_COUNT_KEY, 0);
+        globalMultiplier = PlayerPrefs.GetFloat(MULTIPLIER_KEY, 1f);
+        UpdateAllScoreTexts();
 
-	// Метод для сохранения данных в PlayerPrefs (для int значений)
-	private static void SaveData(string key, int value)
-	{
-		PlayerPrefs.SetInt(key, value);
-		PlayerPrefs.Save();
-	}
+        if (clickButton != null)
+        {
+            clickButton.onClick.AddListener(OnButtonClick);
+        }
+        else
+        {
+            Debug.LogError("Кнопка для кликов не назначена!");
+        }
+    }
 
-	// Метод для сохранения данных в PlayerPrefs (для float значений)
-	private static void SaveData(string key, float value)
-	{
-		PlayerPrefs.SetFloat(key, value);
-		PlayerPrefs.Save();
-	}
+    public void OnButtonClick()
+    {
+        if (Time.time - lastClickTime < 1f)
+        {
+            clicksThisSecond++;
+        }
+        else
+        {
+            clicksThisSecond = 1;
+        }
 
-	// Метод для отображения уведомлений
-	public void ShowNotification(string message)
-	{
-		// Тут можно реализовать логику для UI уведомлений.
-		// Например, показать текстовое уведомление на экране.
+        if (clicksThisSecond > clicksPerSecondLimit)
+        {
+            Debug.LogWarning("Лимит кликов в секунду превышен. Клик проигнорирован.");
+            return;
+        }
 
-		Debug.Log(message); // Временно выводим сообщение в консоль
-		// Можно добавить компонент для UI, например Text или Image, чтобы выводить это сообщение.
-	}
+        AddClicks(1);
+        UpdateAllScoreTexts();
+        lastClickTime = Time.time;
+    }
 
-	// Метод, вызываемый при старте игры
-	void Start()
-	{
-		// Загружаем сохранённое значение кликов из PlayerPrefs
-		_clickCount = PlayerPrefs.GetInt(CLICK_COUNT_KEY, 0);
+    void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else if (Instance != this)
+        {
+            Destroy(gameObject);
+        }
+    }
 
-		// Загружаем сохранённый множитель из PlayerPrefs
-		globalMultiplier = PlayerPrefs.GetFloat(MULTIPLIER_KEY, 1f);
+    public void UpdateAllScoreTexts()
+    {
+        if (scoreText != null)
+        {
+            scoreText.text = "Клики: " + _clickCount;
+        }
 
-		// Обновляем все текстовые поля
-		UpdateAllScoreTexts();
+        foreach (var text in additionalScoreTexts)
+        {
+            if (text != null)
+            {
+                text.text = "Клики: " + _clickCount;
+            }
+        }
+    }
 
-		// Проверяем, что кнопка назначена
-		if (clickButton != null)
-		{
-			// Назначаем обработчик события для кнопки
-			clickButton.onClick.AddListener(OnButtonClick);
-		}
-		else
-		{
-			Debug.LogError("Кнопка для кликов не назначена!");
-		}
-	}
-
-	// Метод, вызываемый при нажатии на кнопку
-	public void OnButtonClick()
-	{
-		// Проверяем, не превышен ли лимит кликов в секунду
-		if (Time.time - lastClickTime < 1f)
-		{
-			clicksThisSecond++;
-		}
-		else
-		{
-			clicksThisSecond = 1; // Начинаем отсчёт кликов с нового периода
-		}
-
-		if (clicksThisSecond > clicksPerSecondLimit)
-		{
-			// Если лимит превышен, игнорируем клик и выводим сообщение
-			Debug.LogWarning("Лимит кликов в секунду превышен. Клик проигнорирован.");
-			return;
-		}
-
-		AddClicks(1); // Увеличиваем счётчик с учётом множителя
-		UpdateAllScoreTexts(); // Обновляем все текстовые поля
-
-		lastClickTime = Time.time; // Обновляем время последнего клика
-	}
-
-	void Awake()
-	{
-		// Убедимся, что Instance всегда ссылается на текущий объект Clicker
-		if (Instance == null)
-		{
-			Instance = this;
-		}
-		else if (Instance != this)
-		{
-			Destroy(gameObject);  // Уничтожаем лишний экземпляр
-		}
-	}
-
-	// Метод для обновления всех текстовых полей
-	public void UpdateAllScoreTexts()
-	{
-		// Обновляем основное текстовое поле
-		if (scoreText != null)
-		{
-			scoreText.text = "Клики: " + _clickCount;
-		}
-
-		// Обновляем дополнительные текстовые поля
-		foreach (var text in additionalScoreTexts)
-		{
-			if (text != null)
-			{
-				text.text = "Клики: " + _clickCount;
-			}
-		}
-	}
-
-	// Метод для сброса прогресса (для тестирования)
-	public static void ResetProgress()
-	{
-		_clickCount = 0;
-		globalMultiplier = 1f;
-		SaveData(CLICK_COUNT_KEY, _clickCount);
-		PlayerPrefs.DeleteKey(MULTIPLIER_KEY);
-		PlayerPrefs.Save();
-		Debug.Log("Прогресс сброшен.");
-	}
-
-
-
-
-	// Метод, вызываемый каждый кадр
-	void Update()
-	{
-		// Нет необходимости делать дополнительные проверки на аномалии здесь,
-		// поскольку проверка кликов в секунду уже происходит при каждом нажатии на кнопку.
-	}
+    public static void ResetProgress()
+    {
+        _clickCount = 0;
+        globalMultiplier = 1f;
+        SaveData(CLICK_COUNT_KEY, _clickCount);
+        PlayerPrefs.DeleteKey(MULTIPLIER_KEY);
+        PlayerPrefs.Save();
+        Debug.Log("Прогресс сброшен.");
+    }
 }

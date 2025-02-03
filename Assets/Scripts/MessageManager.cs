@@ -1,18 +1,19 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class MessageManager : MonoBehaviour
 {
-    // Ссылка на текстовое поле для отображения сообщений
     [Header("UI Elements")]
     [SerializeField] private Text messageText;
 
-    // Время, через которое сообщение исчезнет (в секундах)
     [Header("Settings")]
     [SerializeField] private float messageDuration = 3f;
 
-    // Метод для отображения сообщения
+    private Queue<string> messageQueue = new Queue<string>(); // Очередь сообщений
+    private bool isMessageShowing = false; // Флаг, показывается ли сообщение
+
     public void ShowMessage(string message)
     {
         if (messageText == null)
@@ -21,33 +22,44 @@ public class MessageManager : MonoBehaviour
             return;
         }
 
-        // Устанавливаем текст и логируем для отладки
-        messageText.text = message;
-        Debug.Log($"Сообщение показано: {message}");
+        messageQueue.Enqueue(message); // Добавляем сообщение в очередь
 
-        // Запускаем корутину для очистки сообщения
-        StopAllCoroutines(); // Останавливаем любые текущие корутины очистки
-        StartCoroutine(ClearMessageAfterDelay());
-    }
-
-    // Корутина для очистки сообщения через заданное время
-    private IEnumerator ClearMessageAfterDelay()
-    {
-        yield return new WaitForSeconds(messageDuration); // Ждем указанное время
-        if (messageText != null)
+        if (!isMessageShowing)
         {
-            messageText.text = ""; // Очищаем текст сообщения
-            Debug.Log("Сообщение очищено");
+            StartCoroutine(DisplayMessages()); // Запускаем корутину
         }
     }
 
-    // (Опционально) Метод для немедленного очистки текста
+    private IEnumerator DisplayMessages()
+    {
+        isMessageShowing = true;
+
+        while (messageQueue.Count > 0)
+        {
+            string currentMessage = messageQueue.Dequeue();
+            messageText.text = currentMessage;
+            messageText.gameObject.SetActive(true);
+            Debug.Log($"Сообщение показано: {currentMessage}");
+
+            yield return new WaitForSeconds(messageDuration); // Ждём, пока сообщение будет показано
+
+            messageText.text = ""; // Очищаем текст
+            messageText.gameObject.SetActive(false);
+            Debug.Log("Сообщение очищено");
+
+            yield return new WaitForSeconds(0.5f); // Короткая пауза перед следующим сообщением
+        }
+
+        isMessageShowing = false;
+    }
+
     public void ClearMessageImmediately()
     {
-        if (messageText != null)
-        {
-            messageText.text = ""; // Немедленно очищаем текст
-            Debug.Log("Сообщение очищено немедленно");
-        }
+        StopAllCoroutines();
+        messageQueue.Clear();
+        messageText.text = "";
+        messageText.gameObject.SetActive(false);
+        isMessageShowing = false;
+        Debug.Log("Очередь сообщений очищена немедленно");
     }
 }
