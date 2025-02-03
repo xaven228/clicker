@@ -15,8 +15,9 @@ public class AutoScaler : MonoBehaviour
         float scaleFactorY = Screen.height / referenceResolution.y;
         float scaleFactor = Mathf.Min(scaleFactorX, scaleFactorY);
 
-        // Reverting to the old method due to the lack of FindObjectSortMode in older Unity versions
-        foreach (GameObject obj in FindObjectsOfType<GameObject>()) // Use the non-deprecated method
+        // Используем FindObjectsByType вместо устаревшего метода
+        var allObjects = Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None); // Без сортировки по InstanceID
+        foreach (GameObject obj in allObjects)
         {
             if (obj.activeInHierarchy)
             {

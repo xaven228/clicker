@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 using System.Collections.Generic;
 
 public class Clicker : MonoBehaviour
@@ -23,6 +24,18 @@ public class Clicker : MonoBehaviour
 	private int clicksThisSecond = 0;
 
 	private static List<string> activatedItems = new List<string>();
+
+	// Новые переменные для босса
+	public GameObject bossPanel; // Панель с боссом
+	public Slider bossHealthBar; // HP бар босса
+	public Text bossTimerText; // Таймер на убийство босса
+	public int bossMaxHealth = 100; // Максимальное HP босса
+	private int bossCurrentHealth; // Текущее HP босса
+	public float bossTimeLimit = 30f; // Время на убийство босса
+	private float bossTimeRemaining; // Оставшееся время
+	private bool isBossFightActive = false; // Флаг активности боя с боссом
+	public int bossReward = 100; // Награда за победу над боссом
+	public int bossPenalty = 50; // Штраф за проигрыш
 
 	public static int GetClickCount()
 	{
@@ -59,7 +72,6 @@ public class Clicker : MonoBehaviour
 		return globalMultiplier;
 	}
 
-	// Изменённый метод: теперь множитель умножается
 	public static void MultiplyGlobalMultiplier(float multiplier)
 	{
 		globalMultiplier *= multiplier;
@@ -97,6 +109,12 @@ public class Clicker : MonoBehaviour
 		{
 			Debug.LogError("Кнопка для кликов не назначена!");
 		}
+
+		// Инициализация босса
+		bossCurrentHealth = bossMaxHealth;
+		bossHealthBar.maxValue = bossMaxHealth;
+		bossHealthBar.value = bossCurrentHealth;
+		bossPanel.SetActive(false); // Скрываем панель босса при старте
 	}
 
 	public void OnButtonClick()
@@ -119,12 +137,18 @@ public class Clicker : MonoBehaviour
 		AddClicks(1);
 		UpdateAllScoreTexts();
 		lastClickTime = Time.time;
+
+		// Если бой с боссом активен, наносим урон боссу
+		if (isBossFightActive)
+		{
+			DamageBoss(1); // Наносим 1 урон за клик
+		}
 	}
 
 	void Awake()
 	{
-		LoadClickCount(); // Загружаем количество кликов сразу при старте
-		
+		LoadClickCount();
+
 		if (Instance == null)
 		{
 			Instance = this;
@@ -150,10 +174,11 @@ public class Clicker : MonoBehaviour
 			}
 		}
 	}
-private void LoadClickCount()
-{
-	_clickCount = PlayerPrefs.GetInt("ClickCount", 0);
-}
+
+	private void LoadClickCount()
+	{
+		_clickCount = PlayerPrefs.GetInt("ClickCount", 0);
+	}
 
 	public static void ResetProgress()
 	{
@@ -163,5 +188,67 @@ private void LoadClickCount()
 		PlayerPrefs.DeleteKey(MULTIPLIER_KEY);
 		PlayerPrefs.Save();
 		Debug.Log("Прогресс сброшен.");
+	}
+
+	// Метод для начала боя с боссом
+	public void StartBossFight()
+	{
+		if (!isBossFightActive)
+		{
+			isBossFightActive = true;
+			bossCurrentHealth = bossMaxHealth;
+			bossTimeRemaining = bossTimeLimit;
+			bossPanel.SetActive(true);
+			StartCoroutine(BossFightTimer());
+		}
+	}
+
+	// Корутина для таймера боя с боссом
+	private IEnumerator BossFightTimer()
+	{
+		while (bossTimeRemaining > 0 && isBossFightActive)
+		{
+			bossTimeRemaining -= Time.deltaTime;
+			bossTimerText.text = "Осталось времени: " + Mathf.RoundToInt(bossTimeRemaining).ToString() + " сек.";
+			yield return null;
+		}
+
+		if (isBossFightActive)
+		{
+			EndBossFight(false); // Время вышло, игрок проиграл
+		}
+	}
+
+	// Метод для нанесения урона боссу
+	public void DamageBoss(int damage)
+	{
+		if (isBossFightActive)
+		{
+			bossCurrentHealth -= damage;
+			bossHealthBar.value = bossCurrentHealth;
+
+			if (bossCurrentHealth <= 0)
+			{
+				EndBossFight(true); // Босс побежден
+			}
+		}
+	}
+
+	// Метод для завершения боя с боссом
+	private void EndBossFight(bool isVictory)
+	{
+		isBossFightActive = false;
+		bossPanel.SetActive(false);
+
+		if (isVictory)
+		{
+			AddClicks(bossReward);
+			ShowNotification("Победа! Вы получили " + bossReward + " кликов!");
+		}
+		else
+		{
+			RemoveClicks(bossPenalty);
+			ShowNotification("Поражение! Вы потеряли " + bossPenalty + " кликов!");
+		}
 	}
 }
