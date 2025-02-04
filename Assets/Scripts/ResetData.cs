@@ -14,6 +14,7 @@ public class ResetData : MonoBehaviour
     // Метод для полного сброса данных
     public void ResetAllData()
     {
+        // Сбрасываем данные по модулям
         ResetClickerData();
         ResetAchievementData();
         ResetInventoryData();
@@ -31,12 +32,16 @@ public class ResetData : MonoBehaviour
     {
         if (clicker != null)
         {
-            // Если ResetProgress() статический, вызываем его через класс Clicker
+            // Сбрасываем прогресс кликера
             Clicker.ResetProgress();
 
             // Сбрасываем все клики и множители до нуля
             Clicker.SetGlobalMultiplier(1f);
-            Clicker.RemoveClicks(Clicker.GetClickCount()); // Убираем все клики
+            Clicker.RemoveClicks(Clicker.GetClickCount());
+        }
+        else
+        {
+            Debug.LogWarning("Clicker не назначен в инспекторе.");
         }
     }
 
@@ -50,12 +55,16 @@ public class ResetData : MonoBehaviour
                 achievement.isUnlocked = false;
 
                 // Сохраняем сброшенное достижение в PlayerPrefs
-                string unlockedKey = "AchievementUnlocked_" + achievement.achievementName;
+                string unlockedKey = $"AchievementUnlocked_{achievement.achievementName}";
                 PlayerPrefs.SetInt(unlockedKey, 0); // 0 означает, что достижение не выполнено
             }
 
             // Обновляем интерфейс достижений
             achievementManager.UpdateAchievementUI();
+        }
+        else
+        {
+            Debug.LogWarning("AchievementManager не назначен в инспекторе.");
         }
     }
 
@@ -69,22 +78,33 @@ public class ResetData : MonoBehaviour
                 ResetUpgradeData(upgrade);
             }
         }
+        else
+        {
+            Debug.LogWarning("UpgradeManager не назначен в инспекторе.");
+        }
     }
 
     // Сброс состояния отдельного улучшения
     private void ResetUpgradeData(Upgrade upgrade)
     {
-        upgrade.isPurchased = false;
-
-        // Восстанавливаем интерфейс улучшений
-        if (upgrade.upgradeButton != null)
+        if (upgrade != null)
         {
-            upgrade.upgradeButton.interactable = true; // Делаем кнопку активной
+            upgrade.isPurchased = false;
+
+            // Восстанавливаем интерфейс улучшений
+            if (upgrade.upgradeButton != null)
+            {
+                upgrade.upgradeButton.interactable = true; // Делаем кнопку активной
+            }
+
+            if (upgrade.priceText != null)
+            {
+                upgrade.priceText.text = $"Цена: {upgrade.price}"; // Восстанавливаем текст цены
+            }
         }
-
-        if (upgrade.priceText != null)
+        else
         {
-            upgrade.priceText.text = "Цена: " + upgrade.price; // Восстанавливаем текст цены
+            Debug.LogWarning("Upgrade не назначен или отсутствует.");
         }
     }
 
@@ -95,6 +115,10 @@ public class ResetData : MonoBehaviour
         {
             background.sprite = defaultBackground;
             Debug.Log("Фон сброшен.");
+        }
+        else
+        {
+            Debug.LogWarning("Background или DefaultBackground не назначены в инспекторе.");
         }
     }
 
@@ -111,6 +135,10 @@ public class ResetData : MonoBehaviour
         if (clicker != null)
         {
             clicker.UpdateAllScoreTexts();
+        }
+        else
+        {
+            Debug.LogWarning("Clicker не назначен в инспекторе.");
         }
     }
 }

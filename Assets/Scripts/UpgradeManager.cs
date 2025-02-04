@@ -42,6 +42,24 @@ public class UpgradeManager : MonoBehaviour
             }
         }
     }
+    public void RefreshUI()
+    {
+        foreach (var upgrade in upgrades)
+        {
+            if (upgrade.upgradeButton != null)
+                upgrade.upgradeButton.interactable = !upgrade.isPurchased;
+
+            if (upgrade.priceText != null)
+                upgrade.priceText.text = upgrade.isPurchased ? "Куплено!" : $"Цена: {upgrade.price}";
+        }
+    }
+    public void LoadUpgrades()
+    {
+        foreach (var upgrade in upgrades)
+        {
+            LoadUpgradeState(upgrade);
+        }
+    }
 
     private void LoadUpgradeState(Upgrade upgrade)
     {
