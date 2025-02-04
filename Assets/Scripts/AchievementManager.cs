@@ -134,11 +134,12 @@ public class AchievementManager : MonoBehaviour
             SaveAchievementProgress(achievement);
         }
     }
-	private void Awake()
-	{
-		LoadAchievements();
-		CheckAchievements(0); // Проверяем, не выполнены ли уже какие-то достижения
-	}
+private void Awake()
+{
+    LoadAchievements();
+    CheckAchievements(0); // Проверяем достижения сразу после загрузки
+}
+
 
     public void SaveAchievementProgress(Achievement achievement)
     {

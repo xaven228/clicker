@@ -475,50 +475,45 @@ private void HandleSpinResult(int winningIndex)
 [System.Serializable]
 public class CaseItem
 {
-	public string itemName;              // Имя предмета
-	public Sprite itemSprite;            // Изображение предмета
-	[Range(0, 1)] public float spawnChance; // Шанс появления предмета
+    public string itemName;              // Имя предмета
+    public Sprite itemSprite;            // Изображение предмета
+    [Range(0, 1)] public float spawnChance; // Шанс появления предмета
 
-	public Button lockedButton;           // Кнопка заглушки
-	public Button unlockButton;           // Кнопка выбора фона
+    public Button lockedButton;           // Кнопка заглушки
+    public Button unlockButton;           // Кнопка выбора фона
 
-	public Sprite backgroundSprite;      // Фон, который будет отображаться при выборе предмета
-	public int bonusClicks;              // Количество бонусных кликов
-	public bool isActivated = false;     // Параметр, указывающий активирован ли предмет
+    public Sprite backgroundSprite;      // Фон, который будет отображаться при выборе предмета
+    public int bonusClicks;              // Количество бонусных кликов
+    public bool isActivated = false;     // Параметр, указывающий активирован ли предмет
 
-	// Метод для загрузки состояния активации
-	public void LoadActivationState()
-	{
-		string key = "item_" + itemName;
-		isActivated = PlayerPrefs.GetInt(key, 0) == 1; 
-	}
+    // Метод для загрузки состояния активации
+    public void LoadActivationState()
+    {
+        string key = "item_" + itemName;
+        isActivated = SecurePlayerPrefs.GetInt(key, 0) == 1;
+    }
 
-	// Метод для сохранения состояния активации
-	public void SaveActivationState()
-	{
-		string key = "item_" + itemName;
-		PlayerPrefs.SetInt(key, isActivated ? 1 : 0); 
-		PlayerPrefs.Save();
-	}
+    // Метод для сохранения состояния активации
+    public void SaveActivationState()
+    {
+        string key = "item_" + itemName;
+        SecurePlayerPrefs.SetInt(key, isActivated ? 1 : 0);
+    }
 
-// Метод для активации фона
-public void ActivateItem()
-{
-	if (backgroundSprite != null)
-	{
-		// Меняем фон
-		RouletteManager.Instance.ChangeBackground(backgroundSprite);
-		
-		// Сохраняем выбранный фон
-		PlayerPrefs.SetString("SelectedBackground", itemName);
-		PlayerPrefs.Save();
-	}
-	else
-	{
-		Debug.LogWarning("backgroundSprite не задан для предмета!");
-	}
+    // Метод для активации фона
+    public void ActivateItem()
+    {
+        if (backgroundSprite != null)
+        {
+            // Меняем фон
+            RouletteManager.Instance.ChangeBackground(backgroundSprite);
+
+            // Сохраняем выбранный фон
+            SecurePlayerPrefs.SetString("SelectedBackground", itemName);
+        }
+        else
+        {
+            Debug.LogWarning("backgroundSprite не задан для предмета!");
+        }
+    }
 }
-
-}
-
-

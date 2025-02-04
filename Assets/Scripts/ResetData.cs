@@ -7,6 +7,7 @@ public class ResetData : MonoBehaviour
     [SerializeField] private AchievementManager achievementManager;
     [SerializeField] private UpgradeManager upgradeManager;
     [SerializeField] private SpriteRenderer background;
+    [SerializeField] private CaseItem[] caseItems; // Добавление массива предметов
 
     [Header("Default Settings")]
     [SerializeField] private Sprite defaultBackground;
@@ -19,7 +20,7 @@ public class ResetData : MonoBehaviour
         ResetAchievementData();
         ResetInventoryData();
         ResetBackgroundData();
-        ClearPlayerPrefs();
+        SecurePlayerPrefs.ClearPlayerPrefs();
 
         Debug.Log("Все данные сброшены!");
 
@@ -54,9 +55,9 @@ public class ResetData : MonoBehaviour
             {
                 achievement.isUnlocked = false;
 
-                // Сохраняем сброшенное достижение в PlayerPrefs
+                // Сохраняем сброшенное достижение в SecurePlayerPrefs
                 string unlockedKey = $"AchievementUnlocked_{achievement.achievementName}";
-                PlayerPrefs.SetInt(unlockedKey, 0); // 0 означает, что достижение не выполнено
+                SecurePlayerPrefs.SetInt(unlockedKey, 0); // 0 означает, что достижение не выполнено
             }
 
             // Обновляем интерфейс достижений
@@ -82,6 +83,30 @@ public class ResetData : MonoBehaviour
         {
             Debug.LogWarning("UpgradeManager не назначен в инспекторе.");
         }
+
+        // Сброс данных для предметов
+        if (caseItems != null)
+        {
+            foreach (var item in caseItems)
+            {
+                item.isActivated = false;
+                item.SaveActivationState();
+                
+                // Обновляем кнопки
+                if (item.lockedButton != null)
+                {
+                    item.lockedButton.gameObject.SetActive(true);
+                }
+                if (item.unlockButton != null)
+                {
+                    item.unlockButton.gameObject.SetActive(false);
+                }
+            }
+        }
+        else
+        {
+            Debug.LogWarning("CaseItems не назначены в инспекторе.");
+        }
     }
 
     // Сброс состояния отдельного улучшения
@@ -101,6 +126,10 @@ public class ResetData : MonoBehaviour
             {
                 upgrade.priceText.text = $"Цена: {upgrade.price}"; // Восстанавливаем текст цены
             }
+
+            // Удаляем состояние покупки из SecurePlayerPrefs
+            string key = "UpgradePurchased_" + upgrade.upgradeName;
+            SecurePlayerPrefs.SetInt(key, 0);
         }
         else
         {
@@ -120,13 +149,9 @@ public class ResetData : MonoBehaviour
         {
             Debug.LogWarning("Background или DefaultBackground не назначены в инспекторе.");
         }
-    }
 
-    // Очищаем PlayerPrefs
-    private void ClearPlayerPrefs()
-    {
-        PlayerPrefs.DeleteAll();
-        PlayerPrefs.Save();
+        // Сбрасываем сохраненный фон в SecurePlayerPrefs
+        SecurePlayerPrefs.SetString("SelectedBackground", string.Empty);
     }
 
     // Обновление интерфейса с текстами счёта

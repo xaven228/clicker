@@ -42,6 +42,7 @@ public class UpgradeManager : MonoBehaviour
             }
         }
     }
+
     public void RefreshUI()
     {
         foreach (var upgrade in upgrades)
@@ -53,6 +54,7 @@ public class UpgradeManager : MonoBehaviour
                 upgrade.priceText.text = upgrade.isPurchased ? "Куплено!" : $"Цена: {upgrade.price}";
         }
     }
+
     public void LoadUpgrades()
     {
         foreach (var upgrade in upgrades)
@@ -64,7 +66,7 @@ public class UpgradeManager : MonoBehaviour
     private void LoadUpgradeState(Upgrade upgrade)
     {
         string key = PURCHASED_KEY_PREFIX + upgrade.upgradeName;
-        bool isPurchased = PlayerPrefs.GetInt(key, 0) == 1;
+        bool isPurchased = SecurePlayerPrefs.GetInt(key, 0) == 1;
         Debug.Log($"Загружено улучшение: {key}, куплено: {isPurchased}");
 
         if (isPurchased)
@@ -106,8 +108,7 @@ public class UpgradeManager : MonoBehaviour
 
         upgrade.isPurchased = true;
         string key = PURCHASED_KEY_PREFIX + upgrade.upgradeName;
-        PlayerPrefs.SetInt(key, 1);
-        PlayerPrefs.Save();
+        SecurePlayerPrefs.SetInt(key, 1);
 
         Debug.Log($"Сохранено улучшение: {key}");
 

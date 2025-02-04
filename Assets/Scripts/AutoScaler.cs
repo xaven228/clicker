@@ -1,28 +1,34 @@
 using UnityEngine;
+using UnityEngine.UI;
 
+[RequireComponent(typeof(CanvasScaler))]
 public class AutoScaler : MonoBehaviour
 {
-    private Vector2 referenceResolution = new Vector2(1920, 1080); // Базовое разрешение для масштабирования
-    
+    [Header("Reference Resolution")]
+    [Tooltip("Базовое разрешение для масштабирования")]
+    [SerializeField] private Vector2 referenceResolution = new Vector2(1920, 1080);
+
+    private CanvasScaler canvasScaler;
+
     void Start()
     {
-        ScaleObjects();
-    }
+        canvasScaler = GetComponent<CanvasScaler>();
 
-    void ScaleObjects()
-    {
-        float scaleFactorX = Screen.width / referenceResolution.x;
-        float scaleFactorY = Screen.height / referenceResolution.y;
-        float scaleFactor = Mathf.Min(scaleFactorX, scaleFactorY);
-
-        // Используем FindObjectsByType вместо устаревшего метода
-        var allObjects = Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None); // Без сортировки по InstanceID
-        foreach (GameObject obj in allObjects)
+        if (canvasScaler != null)
         {
-            if (obj.activeInHierarchy)
-            {
-                obj.transform.localScale *= scaleFactor;
-            }
+            // Устанавливаем базовое разрешение
+            canvasScaler.referenceResolution = referenceResolution;
+
+            // Настраиваем режим масштабирования
+            canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            canvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            canvasScaler.matchWidthOrHeight = 0.5f; // 0 = только ширина, 1 = только высота, 0.5 = среднее значение
+
+            Debug.Log("CanvasScaler настроен для автоматического масштабирования объектов UI.");
+        }
+        else
+        {
+            Debug.LogError("Компонент CanvasScaler не найден на этом объекте.");
         }
     }
 }
