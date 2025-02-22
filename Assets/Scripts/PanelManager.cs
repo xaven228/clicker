@@ -4,110 +4,125 @@ using UnityEngine.UI;
 [System.Serializable]
 public class ButtonPanelPair
 {
-    [Header("Pair Info")]
-    public string pairName; // Название пары
-    public Button button; // Кнопка, которая будет управлять панелями
-    public GameObject[] panelsToOpen; // Панели, которые нужно открыть
-    public GameObject[] panelsToClose; // Панели, которые нужно закрыть
+    [Header("Pair Configuration")]
+    [SerializeField] private string pairName = "Unnamed Pair";
+    [SerializeField] private Button button;
+    [SerializeField] private GameObject[] panelsToOpen = new GameObject[0];
+    [SerializeField] private GameObject[] panelsToClose = new GameObject[0];
+
+    public string PairName => pairName;
+    public Button Button => button;
+    public GameObject[] PanelsToOpen => panelsToOpen;
+    public GameObject[] PanelsToClose => panelsToClose;
 }
 
 public class PanelManager : MonoBehaviour
 {
-    [Header("Button-Panel Configuration")]
-    [SerializeField] private ButtonPanelPair[] buttonPanelPairs; // Массив пар "кнопка - панель"
+    [Header("Configuration")]
+    [SerializeField] private ButtonPanelPair[] buttonPanelPairs = new ButtonPanelPair[0];
 
-    [Header("Default Panel")]
-    [SerializeField] private GameObject defaultPanel; // Ссылка на панель, которая должна быть открыта при старте
+    [Header("Default Settings")]
+    [SerializeField] private GameObject defaultPanel;
 
-    // Метод, вызываемый при старте игры
+    #region Unity Methods
     private void Start()
     {
-        if (buttonPanelPairs == null || buttonPanelPairs.Length == 0)
-        {
-            Debug.LogError("Массив buttonPanelPairs пуст! Добавьте пары в инспекторе.");
+        InitializePanelManager();
+    }
+    #endregion
+
+    #region Initialization
+    private void InitializePanelManager()
+    {
+        if (!ValidatePairs())
             return;
-        }
 
-        // Открытие панели по умолчанию
         OpenDefaultPanel();
-
-        // Назначение обработчиков кнопок
         AssignButtonListeners();
     }
 
-    // Метод для открытия панели по умолчанию
+    private bool ValidatePairs()
+    {
+        if (buttonPanelPairs.Length == 0)
+        {
+            Debug.LogError("Массив ButtonPanelPairs пуст! Настройте пары в инспекторе.");
+            return false;
+        }
+        return true;
+    }
+
     private void OpenDefaultPanel()
     {
-        // Закрываем все панели перед открытием дефолтной
-        SetPanelsActiveState(false);
-
-        if (defaultPanel == null)
-        {
-            Debug.LogError("Дефолтная панель не назначена!");
+        if (!ValidateDefaultPanel())
             return;
-        }
 
-        // Открываем дефолтную панель
+        SetAllPanelsActive(false);
         defaultPanel.SetActive(true);
     }
 
-    // Метод для обработки нажатия на кнопку
-    private void HandleButtonClick(ButtonPanelPair pair)
+    private bool ValidateDefaultPanel()
     {
-        Debug.Log($"Нажата кнопка из пары: {pair.pairName}");
-
-        // Открываем все панели из массива panelsToOpen
-        TogglePanelsState(pair.panelsToOpen, true);
-        
-        // Закрываем все панели из массива panelsToClose
-        TogglePanelsState(pair.panelsToClose, false);
+        if (defaultPanel == null)
+        {
+            Debug.LogError("Дефолтная панель не назначена в инспекторе!");
+            return false;
+        }
+        return true;
     }
+    #endregion
 
-    // Метод для установки состояний всех панелей
-    private void SetPanelsActiveState(bool state)
+    #region Panel Management
+    private void SetAllPanelsActive(bool state)
     {
         foreach (var pair in buttonPanelPairs)
         {
-            if (pair.panelsToOpen != null)
-            {
-                foreach (var panel in pair.panelsToOpen)
-                {
-                    if (panel != null) panel.SetActive(state);
-                }
-            }
+            TogglePanels(pair.PanelsToOpen, state);
+            TogglePanels(pair.PanelsToClose, state);
         }
     }
 
-    // Метод для переключения состояния панелей
-    private void TogglePanelsState(GameObject[] panels, bool state)
+    private void TogglePanels(GameObject[] panels, bool state)
     {
         if (panels == null) return;
 
         foreach (var panel in panels)
         {
-            if (panel != null)
+            if (panel != null && panel.activeSelf != state)
             {
-                bool isCurrentlyActive = panel.activeSelf;
-                if (isCurrentlyActive != state) // Проверяем, нужно ли изменять состояние
-                {
-                    panel.SetActive(state);
-                }
+                panel.SetActive(state);
             }
         }
     }
 
-    // Метод для назначения обработчиков событий для кнопок
+    private void HandleButtonClick(ButtonPanelPair pair)
+    {
+        Debug.Log($"Активирована пара: {pair.PairName}");
+        TogglePanels(pair.PanelsToOpen, true);
+        TogglePanels(pair.PanelsToClose, false);
+    }
+    #endregion
+
+    #region Button Setup
     private void AssignButtonListeners()
     {
         foreach (var pair in buttonPanelPairs)
         {
-            if (pair.button == null)
-            {
-                Debug.LogError($"Кнопка не назначена для пары: {pair.pairName}");
-                continue; // Пропускаем эту пару
-            }
+            if (!ValidateButton(pair))
+                continue;
 
-            pair.button.onClick.AddListener(() => HandleButtonClick(pair));
+            pair.Button.onClick.RemoveAllListeners(); // Очищаем старые слушатели
+            pair.Button.onClick.AddListener(() => HandleButtonClick(pair));
         }
     }
+
+    private bool ValidateButton(ButtonPanelPair pair)
+    {
+        if (pair.Button == null)
+        {
+            Debug.LogError($"Кнопка не назначена для пары: {pair.PairName}");
+            return false;
+        }
+        return true;
+    }
+    #endregion
 }

@@ -4,23 +4,47 @@ using UnityEngine.UI;
 [System.Serializable]
 public class Achievement
 {
-    public string achievementName;
-    public string description;
-    public int maxProgress;
-    public int currentProgress;
-    public bool isUnlocked;
+    [SerializeField] private string achievementName;
+    [SerializeField, TextArea] private string description;
+    [SerializeField] private int maxProgress;
+    [SerializeField] private Text achievementText;
+    [SerializeField] private Slider progressBar;
 
-    public Text achievementText;
-    public Slider progressBar; // Добавлен слайдер прогресса
+    public string AchievementName => achievementName;
+    public string Description => description;
+    public int MaxProgress => maxProgress;
+    public int CurrentProgress { get; set; }
+    public bool IsUnlocked { get; set; }
+    public Text AchievementText => achievementText;
+    public Slider ProgressBar => progressBar;
 }
 
 public class AchievementManager : MonoBehaviour
 {
-    public Achievement[] achievements;
-    public Clicker clicker;
-    public MessageManager messageManager;
+    [Header("Achievements")]
+    [SerializeField] private Achievement[] achievements = new Achievement[0];
+
+    [Header("Dependencies")]
+    [SerializeField] private Clicker clicker;
+    [SerializeField] private MessageManager messageManager;
+
+    public Achievement[] Achievements => achievements; // Добавлено публичное свойство
 
     private const string UNLOCKED_KEY_PREFIX = "AchievementUnlocked_";
+    private const string PROGRESS_KEY_PREFIX = "AchievementProgress_";
+
+    #region Unity Methods
+    private void Awake()
+    {
+        LoadAchievements();
+    }
+
+    private void Start()
+    {
+        ValidateComponents();
+        CheckAchievements(0);
+        UpdateAchievementUI();
+    }
 
     private void OnEnable()
     {
@@ -32,118 +56,120 @@ public class AchievementManager : MonoBehaviour
         Clicker.OnClickAdded -= CheckAchievements;
     }
 
-    private void Start()
+    private void OnApplicationQuit()
     {
-        LoadAchievements();
-        CheckAchievements(0);
-        CheckInitialAchievements();
+        SaveAllAchievementsProgress();
     }
-
-    public void CheckAchievements(int addedClicks)
+    #endregion
+    
+    #region Initialization
+    private void ValidateComponents()
     {
-        int totalClicks = Clicker.GetClickCount();
-
-        foreach (var achievement in achievements)
+        if (clicker == null && !TryGetComponent(out clicker))
         {
-            if (!achievement.isUnlocked)
-            {
-                if (totalClicks >= achievement.maxProgress && achievement.currentProgress < achievement.maxProgress)
-                {
-                    achievement.currentProgress = achievement.maxProgress;
-                    UnlockAchievement(achievement);
-                }
-                else if (totalClicks < achievement.maxProgress)
-                {
-                    achievement.currentProgress = totalClicks;
-                }
-            }
+            clicker = FindFirstObjectByType<Clicker>();
+            if (clicker == null) Debug.LogWarning("Clicker не назначен и не найден на сцене!");
         }
-
-        UpdateAchievementUI();
-    }
-
-    private void CheckInitialAchievements()
-    {
-        foreach (var achievement in achievements)
+        if (messageManager == null && !TryGetComponent(out messageManager))
         {
-            if (achievement.currentProgress >= achievement.maxProgress && !achievement.isUnlocked)
-            {
-                UnlockAchievement(achievement);
-            }
+            messageManager = FindFirstObjectByType<MessageManager>();
+            if (messageManager == null) Debug.LogWarning("MessageManager не назначен и не найден на сцене!");
         }
-        UpdateAchievementUI();
-    }
-
-    private void UnlockAchievement(Achievement achievement)
-    {
-        achievement.isUnlocked = true;
-        PlayerPrefs.SetInt(UNLOCKED_KEY_PREFIX + achievement.achievementName, 1);
-        PlayerPrefs.Save();
-
-        if (messageManager != null)
-        {
-            messageManager.ShowMessage($"Достижение выполнено: {achievement.achievementName}");
-        }
-        Debug.Log($"Достижение '{achievement.achievementName}' выполнено!");
     }
 
     private void LoadAchievements()
     {
         foreach (var achievement in achievements)
         {
-            string unlockedKey = UNLOCKED_KEY_PREFIX + achievement.achievementName;
-            achievement.isUnlocked = PlayerPrefs.GetInt(unlockedKey, 0) == 1;
-            achievement.currentProgress = PlayerPrefs.GetInt("AchievementProgress_" + achievement.achievementName, 0);
+            achievement.IsUnlocked = SecurePlayerPrefs.GetInt($"{UNLOCKED_KEY_PREFIX}{achievement.AchievementName}", 0) == 1;
+            achievement.CurrentProgress = SecurePlayerPrefs.GetInt($"{PROGRESS_KEY_PREFIX}{achievement.AchievementName}", 0);
         }
     }
+    #endregion
 
+    #region Achievement Logic
+    public void CheckAchievements(int addedClicks)
+    {
+        if (clicker == null) return;
+
+        int totalClicks = Clicker.GetClickCount();
+        bool uiNeedsUpdate = false;
+
+        foreach (var achievement in achievements)
+        {
+            if (!achievement.IsUnlocked)
+            {
+                UpdateProgress(achievement, totalClicks);
+                if (achievement.CurrentProgress >= achievement.MaxProgress)
+                {
+                    UnlockAchievement(achievement);
+                    uiNeedsUpdate = true;
+                }
+            }
+        }
+
+        if (uiNeedsUpdate || addedClicks > 0)
+            UpdateAchievementUI();
+    }
+
+    private void UpdateProgress(Achievement achievement, int totalClicks)
+    {
+        achievement.CurrentProgress = Mathf.Min(totalClicks, achievement.MaxProgress);
+        SaveAchievementProgress(achievement);
+    }
+
+    private void UnlockAchievement(Achievement achievement)
+    {
+        achievement.IsUnlocked = true;
+        SecurePlayerPrefs.SetInt($"{UNLOCKED_KEY_PREFIX}{achievement.AchievementName}", 1);
+        SaveAchievementProgress(achievement);
+
+        messageManager?.ShowMessage($"Достижение выполнено: {achievement.AchievementName}");
+        Debug.Log($"Достижение '{achievement.AchievementName}' разблокировано!");
+    }
+    #endregion
+
+    #region UI Management
     public void UpdateAchievementUI()
     {
         foreach (var achievement in achievements)
         {
-            if (achievement.achievementText != null)
-            {
-                if (achievement.isUnlocked)
-                {
-                    achievement.achievementText.text = $"Выполнено!";
-                }
-                else
-                {
-                    achievement.achievementText.text = $"{achievement.currentProgress}/{achievement.maxProgress}";
-                }
-            }
-
-            if (achievement.progressBar != null)
-            {
-                achievement.progressBar.maxValue = achievement.maxProgress;
-                achievement.progressBar.value = achievement.currentProgress;
-                achievement.progressBar.interactable = false; // Блокируем слайдер от изменения вручную
-            }
+            UpdateText(achievement);
+            UpdateProgressBar(achievement);
         }
     }
 
-    private void OnApplicationQuit()
+    private void UpdateText(Achievement achievement)
     {
-        SaveAllAchievementsProgress();
+        if (achievement.AchievementText != null)
+        {
+            achievement.AchievementText.text = achievement.IsUnlocked
+                ? "Выполнено!"
+                : $"{achievement.CurrentProgress}/{achievement.MaxProgress}";
+        }
     }
 
+    private void UpdateProgressBar(Achievement achievement)
+    {
+        if (achievement.ProgressBar != null)
+        {
+            achievement.ProgressBar.maxValue = achievement.MaxProgress;
+            achievement.ProgressBar.value = achievement.CurrentProgress;
+            achievement.ProgressBar.interactable = false;
+        }
+    }
+    #endregion
+
+    #region Data Management
     private void SaveAllAchievementsProgress()
     {
         foreach (var achievement in achievements)
-        {
             SaveAchievementProgress(achievement);
-        }
     }
-private void Awake()
-{
-    LoadAchievements();
-    CheckAchievements(0); // Проверяем достижения сразу после загрузки
-}
 
-
-    public void SaveAchievementProgress(Achievement achievement)
+    private void SaveAchievementProgress(Achievement achievement)
     {
-        PlayerPrefs.SetInt("AchievementProgress_" + achievement.achievementName, achievement.currentProgress);
-        PlayerPrefs.Save();
+        SecurePlayerPrefs.SetInt($"{PROGRESS_KEY_PREFIX}{achievement.AchievementName}", achievement.CurrentProgress);
     }
+    #endregion
 }

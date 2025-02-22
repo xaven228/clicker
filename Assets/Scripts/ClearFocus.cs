@@ -3,33 +3,53 @@ using UnityEngine.EventSystems;
 
 public class ClearFocus : MonoBehaviour
 {
-    // Ссылка на EventSystem, используемая для снятия фокуса
-    private EventSystem eventSystem;
+    [Header("Dependencies")]
+    [SerializeField] private EventSystem eventSystem;
 
-    // Инициализация
+    #region Unity Methods
     private void Awake()
     {
-        // Инициализируем EventSystem
-        eventSystem = EventSystem.current;
-        if (eventSystem == null)
-        {
-            Debug.LogError("EventSystem не найден в сцене.");
-        }
+        InitializeEventSystem();
     }
 
-    // Метод, вызываемый каждый кадр
     private void Update()
     {
-        // Проверяем, если нажата любая клавиша или кнопка мыши
+        CheckForInput();
+    }
+    #endregion
+
+    #region Initialization
+    private void InitializeEventSystem()
+    {
+        if (eventSystem == null)
+        {
+            eventSystem = EventSystem.current;
+            if (eventSystem == null)
+            {
+                Debug.LogError("EventSystem не найден в сцене! Убедитесь, что он присутствует.");
+                enabled = false;
+                return;
+            }
+        }
+    }
+    #endregion
+
+    #region Focus Management
+    private void CheckForInput()
+    {
         if (Input.anyKeyDown && eventSystem != null)
         {
             RemoveFocus();
         }
     }
 
-    // Снятие фокуса с активного объекта
+    /// <summary>
+    /// Снимает фокус с текущего выбранного объекта в EventSystem.
+    /// </summary>
     private void RemoveFocus()
     {
         eventSystem.SetSelectedGameObject(null);
+        // Опционально: Debug.Log("Фокус снят с активного объекта.");
     }
+    #endregion
 }

@@ -1,519 +1,388 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Collections.Generic;
+using System.Linq; // Добавлено для LINQ (Sum)
 
-public class RouletteManager : MonoBehaviour
+public class CaseManager : MonoBehaviour
 {
-	
-	[Header("Настройки рулетки")]
-	public List<CaseItem> caseItems;  // Список предметов с шансом появления
-	public int totalItemsCount = 1000; // Количество экземпляров в рулетке
-	public int clickCost = 10; // Стоимость запуска рулетки в кликах
+    [Header("Case Settings")]
+    [SerializeField] private List<CaseItem> caseItems = new List<CaseItem>();
+    [SerializeField] private int totalItemsCount = 1000;
+    [SerializeField] private int clickCost = 10;
+    [SerializeField] private float itemSpacing = 100f;
 
-	// Добавляем переменную Instance
-	public static RouletteManager Instance { get; private set; }
-	
-	public RectTransform roulettePanel; // Панель рулетки
-	public GameObject itemPrefab; // Префаб элемента рулетки
-	public float itemSpacing = 100f; // Расстояние между элементами
+    [Header("UI Elements")]
+    [SerializeField] private RectTransform roulettePanel;
+    [SerializeField] private GameObject itemPrefab;
+    [SerializeField] private Image backgroundImage;
+    [SerializeField] private Button startButton;
+    [SerializeField] private GameObject roulettePanelUI;
+    [SerializeField] private Button closeButton;
+    [SerializeField] private GameObject arrowSprite;
+    [SerializeField] private float arrowOffsetY = -50f;
 
-	private List<GameObject> itemObjects = new List<GameObject>(); // Список объектов на панели
-	private List<CaseItem> rouletteItems = new List<CaseItem>(); // Список предметов на рулетке
-	private Clicker clicker; // Ссылка на скрипт Clicker
+    [Header("Dependencies")]
+    [SerializeField] private MessageManager messageManager;
+    [SerializeField] private AchievementManager achievementManager;
 
-	[Header("UI")]
-	public Image backgroundImage;  // Ссылка на компонент Image фона
-	public Button startButton;  // Ссылка на кнопку запуска рулетки
-	public GameObject roulettePanelUI;  // Ссылка на панель UI с рулеткой
-	public Button closeButton;  // Кнопка закрытия панели рулетки
+    private static CaseManager instance;
+    private Clicker clicker;
+    private List<GameObject> itemObjects = new List<GameObject>();
+    private List<CaseItem> rouletteItems = new List<CaseItem>();
 
-	// Добавляем ссылку на объект стрелки
-	public GameObject arrowSprite;  // Стрелка, указывающая на центр
-	public float arrowOffsetY = -50f; // Смещение стрелки по оси Y (для того, чтобы она была под панелью)
+    public static CaseManager Instance => instance;
 
-	// Ссылка на MessageManager для отображения сообщений
-	public MessageManager messageManager;  // Ссылка на объект MessageManager
-	public AchievementManager achievementManager; // Добавляем ссылку на AchievementManagerи
-
-	// Метод для изменения фона
-	public void ChangeBackground(Sprite newBackground)
-	{
-		if (backgroundImage != null && newBackground != null)
-		{
-			backgroundImage.sprite = newBackground;  // Меняем фон
-		}
-		else
-		{
-			Debug.LogWarning("Не удалось изменить фон. Новый фон не указан или Image не найден.");
-		}
-	}
-
-	void Awake()
-	{
-		    if (achievementManager == null)
+    #region Unity Methods
+    private void Awake()
     {
-        achievementManager = FindFirstObjectByType<AchievementManager>(); // Новый метод поиска
+        SetupSingleton();
     }
-		// Проверяем, если уже есть экземпляр, то удаляем этот объект
-		if (Instance != null && Instance != this)
-		{
-			Destroy(gameObject);  // Удаляем лишний экземпляр
-		}
-		else
-		{
-			Instance = this;  // Устанавливаем этот экземпляр как главный
-			DontDestroyOnLoad(gameObject);  // Не уничтожаем объект при смене сцен
-		}
-	}
-	// Метод для загрузки фона при старте игры
-private void LoadSelectedBackground()
-{
-	string selectedBackgroundName = PlayerPrefs.GetString("SelectedBackground", "");
-	if (!string.IsNullOrEmpty(selectedBackgroundName))
-	{
-		// Ищем предмет по имени, если оно найдено, меняем фон
-		CaseItem selectedItem = caseItems.Find(item => item.itemName == selectedBackgroundName);
-		if (selectedItem != null && selectedItem.backgroundSprite != null)
-		{
-			backgroundImage.sprite = selectedItem.backgroundSprite;
-		}
-	}
-}
 
-void Start()
-{
-	// Загружаем фоновое изображение
-	LoadSelectedBackground();
-
-	clicker = Object.FindFirstObjectByType<Clicker>(); // Получаем ссылку на Clicker
-	if (clicker == null)
-	{
-		Debug.LogError("Clicker не найден на сцене!");
-	}
-	
-	// Загрузка состояния активации для всех предметов
-	foreach (var item in rouletteItems)
-	{
-		item.LoadActivationState(); // Загружаем состояние активации каждого предмета
-	}
-
-	// Назначаем обработчик нажатия кнопки на старте
-	if (startButton != null)
-	{
-		startButton.onClick.AddListener(StartRoulette);
-	}
-	else
-	{
-		Debug.LogError("Кнопка для запуска рулетки не назначена!");
-	}
-
-	// Подписываемся на событие изменения кликов
-	Clicker.OnClickAdded += HandleClickAdded;
-
-	// Изначально размещаем стрелку под панелью
-	if (arrowSprite != null)
-	{
-		arrowSprite.transform.position = new Vector3(roulettePanel.position.x, roulettePanel.position.y + arrowOffsetY, roulettePanel.position.z);
-	}
-
-	// Скрываем панель рулетки и кнопку закрытия на старте
-	roulettePanelUI.SetActive(false);
-	closeButton.gameObject.SetActive(false);
-
-	// Назначаем обработчик для кнопки закрытия
-	closeButton.onClick.AddListener(CloseRoulettePanel);
-
-	// Загружаем состояние кнопок из PlayerPrefs
-	LoadUnlockButtonsState();
-
-	// Назначаем обработчик для кнопок активации
-	foreach (var item in caseItems)
-	{
-		if (item.unlockButton != null)
-		{
-			item.unlockButton.onClick.AddListener(() => item.ActivateItem());  // Привязка к кнопке
-		}
-	}
-}
-
-
-
-	// Обработчик события изменения кликов
-	private void HandleClickAdded(int amount)
-	{
-		Debug.Log($"Клики изменены на {amount}. Текущее количество: {Clicker.GetClickCount()}");
-	}
-
-	// Метод для создания новой панели рулетки
-	private void CreateNewRoulettePanel()
-	{
-		foreach (var itemObject in itemObjects)
-		{
-			Destroy(itemObject);
-		}
-		itemObjects.Clear();
-		rouletteItems.Clear();
-
-		for (int i = 0; i < totalItemsCount; i++)
-		{
-			CaseItem randomItem = GetRandomItemBasedOnChance();
-			rouletteItems.Add(randomItem);
-		}
-
-		for (int i = 0; i < totalItemsCount; i++)
-		{
-			GameObject itemObj = Instantiate(itemPrefab, roulettePanel);
-			itemObj.transform.localPosition = new Vector3(i * itemSpacing, 0, 0);
-			itemObj.GetComponent<Image>().sprite = rouletteItems[i].itemSprite;
-			itemObjects.Add(itemObj);
-
-			// Добавляем обработчик нажатия на кнопку активации каждого предмета
-			if (rouletteItems[i].unlockButton != null)
-			{
-				int index = i; // Чтобы не потерять индекс в замыкании
-				rouletteItems[i].unlockButton.onClick.AddListener(() => OnUnlockButtonClick(rouletteItems[index]));
-			}
-		}
-	}
-
-	// Метод для получения случайного предмета на основе шансов
-	private CaseItem GetRandomItemBasedOnChance()
-{
-	if (caseItems == null || caseItems.Count == 0)
-	{
-		Debug.LogError("Список caseItems пуст!");
-		return null;  // Вернуть null, чтобы избежать дальнейших ошибок
-	}
-
-	float totalChance = 0f;
-	foreach (var item in caseItems)
-	{
-		if (item == null)
-		{
-			Debug.LogError("Найден пустой элемент в caseItems!");
-			continue;  // Пропускаем пустой элемент, если он есть
-		}
-		totalChance += item.spawnChance;
-	}
-
-	float randomValue = Random.Range(0f, totalChance);
-
-	float currentChance = 0f;
-	foreach (var item in caseItems)
-	{
-		if (item == null)
-		{
-			continue;  // Пропускаем пустые элементы
-		}
-
-		currentChance += item.spawnChance;
-		if (randomValue <= currentChance)
-		{
-			return item;
-		}
-	}
-
-	// Если по какой-то причине не найден элемент (не должно быть такого), вернем первый
-	return caseItems[0];
-}
-
-
-	// Метод для начала прокрутки рулетки с оплатой кликами
-	public void StartRoulette()
-	{
-		if (Clicker.GetClickCount() >= clickCost)
-		{
-			Clicker.RemoveClicks(clickCost);
-			ResetRoulettePanel();
-			CreateNewRoulettePanel();
-			StartCoroutine(SpinRoulette());
-
-			// Обновляем UI
-			Clicker.Instance.UpdateAllScoreTexts();
-
-			roulettePanelUI.SetActive(true);
-			startButton.gameObject.SetActive(false);
-		}
-		else
-		{
-			Debug.Log("Недостаточно кликов для запуска рулетки!");
-		}
-	}
-
-	// Метод для сброса позиции панели рулетки
-	private void ResetRoulettePanel()
-	{
-		roulettePanel.localPosition = Vector3.zero;
-	}
-
-	// Метод для прокрутки рулетки
-	private IEnumerator SpinRoulette()
-	{
-		float spinDuration = Random.Range(2f, 4f);
-		float elapsedTime = 0f;
-		float startPosition = roulettePanel.localPosition.x;
-		float targetPosition = startPosition - (totalItemsCount * itemSpacing);
-
-		while (elapsedTime < spinDuration)
-		{
-			float t = elapsedTime / spinDuration;
-			t = Mathf.SmoothStep(0, 1, t);
-			float currentPosition = Mathf.Lerp(startPosition, targetPosition, t);
-			roulettePanel.localPosition = new Vector3(currentPosition, 0, 0);
-
-			elapsedTime += Time.deltaTime;
-			yield return null;
-		}
-
-		roulettePanel.localPosition = new Vector3(targetPosition, 0, 0);
-
-		int winningIndex = GetClosestItemToArrow();
-		HandleSpinResult(winningIndex);
-
-		closeButton.gameObject.SetActive(true);
-	}
-
-	// Метод для определения предмета, ближайшего к центру экрана
-	private int GetClosestItemToArrow()
-	{
-		int closestIndex = 0;
-		float closestDistance = float.MaxValue;
-		Vector3 arrowPosition = arrowSprite.transform.position;
-
-		for (int i = 0; i < itemObjects.Count; i++)
-		{
-			Vector3 itemPosition = itemObjects[i].transform.position;
-			float distance = Mathf.Abs(itemPosition.x - arrowPosition.x);
-
-			if (distance < closestDistance)
-			{
-				closestDistance = distance;
-				closestIndex = i;
-			}
-		}
-
-		return closestIndex;
-	}
-
-private void HandleSpinResult(int winningIndex)
-{
-    CaseItem resultItem = rouletteItems[winningIndex];
-
-    // Сохраняем количество кликов до начисления бонусов
-    int previousClickCount = Clicker.GetClickCount();
-
-    Debug.Log($"Поздравляем! Вы выиграли: {resultItem.itemName}");
-
-    // Загружаем состояние активации предмета
-    resultItem.LoadActivationState();
-
-    if (resultItem.isActivated)
+    private void Start()
     {
-        // Если предмет уже активирован, начисляем бонус
-        Clicker.AddClicks(resultItem.bonusClicks);
-        Debug.Log($"Предмет {resultItem.itemName} уже активирован. Вам начислен бонус: {resultItem.bonusClicks} кликов.");
+        InitializeCaseManager();
+    }
 
-        int addedClicks = Clicker.GetClickCount() - previousClickCount;
-        Debug.Log($"Бонус начислен: {addedClicks} кликов.");
+    private void OnDestroy()
+    {
+        Clicker.OnClickAdded -= HandleClickAdded;
+    }
+    #endregion
 
-        if (messageManager != null)
+    #region Initialization
+    private void SetupSingleton()
+    {
+        if (instance != null && instance != this)
         {
+            Destroy(gameObject);
+            return;
+        }
+        instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    private void InitializeCaseManager()
+    {
+        if (!ValidateComponents()) return;
+
+        LoadSelectedBackground();
+        clicker = FindFirstObjectByType<Clicker>();
+        Clicker.OnClickAdded += HandleClickAdded;
+
+        startButton.onClick.AddListener(StartRoulette);
+        closeButton.onClick.AddListener(CloseRoulettePanel);
+        roulettePanelUI.SetActive(false);
+        closeButton.gameObject.SetActive(false);
+
+        PositionArrow();
+        LoadUnlockButtonsState();
+        SetupItemActivationListeners();
+    }
+
+    private bool ValidateComponents()
+    {
+        if (roulettePanel == null) { Debug.LogError("RoulettePanel не назначен!"); enabled = false; return false; }
+        if (itemPrefab == null) { Debug.LogError("ItemPrefab не назначен!"); enabled = false; return false; }
+        if (backgroundImage == null) { Debug.LogError("BackgroundImage не назначен!"); enabled = false; return false; }
+        if (startButton == null) { Debug.LogError("StartButton не назначен!"); enabled = false; return false; }
+        if (roulettePanelUI == null) { Debug.LogError("RoulettePanelUI не назначен!"); enabled = false; return false; }
+        if (closeButton == null) { Debug.LogError("CloseButton не назначен!"); enabled = false; return false; }
+        if (arrowSprite == null) { Debug.LogError("ArrowSprite не назначен!"); enabled = false; return false; }
+        if (messageManager == null && !TryGetComponent(out messageManager)) { Debug.LogError("MessageManager не назначен!"); enabled = false; return false; }
+        if (achievementManager == null) achievementManager = FindFirstObjectByType<AchievementManager>();
+        return true;
+    }
+
+    private void LoadSelectedBackground()
+    {
+        string backgroundName = SecurePlayerPrefs.GetString("SelectedBackground", string.Empty);
+        if (!string.IsNullOrEmpty(backgroundName))
+        {
+            CaseItem selectedItem = caseItems.Find(item => item.ItemName == backgroundName);
+            if (selectedItem != null)
+                ChangeBackground(selectedItem.BackgroundSprite);
+        }
+    }
+
+    private void PositionArrow()
+    {
+        arrowSprite.transform.position = new Vector3(roulettePanel.position.x, roulettePanel.position.y + arrowOffsetY, roulettePanel.position.z);
+    }
+    #endregion
+
+    #region Roulette Logic
+    public void StartRoulette()
+    {
+        if (Clicker.GetClickCount() < clickCost)
+        {
+            messageManager.ShowMessage("Недостаточно кликов для запуска рулетки!");
+            return;
+        }
+
+        Clicker.RemoveClicks(clickCost);
+        ResetRoulettePanel();
+        CreateNewRoulettePanel();
+        StartCoroutine(SpinRoulette());
+        ToggleUI(true);
+    }
+
+    private void ResetRoulettePanel()
+    {
+        roulettePanel.localPosition = Vector3.zero;
+    }
+
+    private void CreateNewRoulettePanel()
+    {
+        ClearRouletteItems();
+        PopulateRouletteItems();
+        SpawnRouletteItems();
+    }
+
+    private void ClearRouletteItems()
+    {
+        foreach (var itemObject in itemObjects)
+            Destroy(itemObject);
+        itemObjects.Clear();
+        rouletteItems.Clear();
+    }
+
+    private void PopulateRouletteItems()
+    {
+        for (int i = 0; i < totalItemsCount; i++)
+            rouletteItems.Add(GetRandomItemBasedOnChance());
+    }
+
+    private void SpawnRouletteItems()
+    {
+        for (int i = 0; i < totalItemsCount; i++)
+        {
+            GameObject itemObj = Instantiate(itemPrefab, roulettePanel);
+            itemObj.transform.localPosition = new Vector3(i * itemSpacing, 0, 0);
+            itemObj.GetComponent<Image>().sprite = rouletteItems[i].ItemSprite;
+            itemObjects.Add(itemObj);
+        }
+    }
+
+    private CaseItem GetRandomItemBasedOnChance()
+    {
+        if (caseItems.Count == 0)
+        {
+            Debug.LogError("Список caseItems пуст!");
+            return null;
+        }
+
+        float totalChance = caseItems.Sum(item => item?.SpawnChance ?? 0); // Исправлено с System.Linq
+        float randomValue = Random.Range(0f, totalChance);
+        float currentChance = 0f;
+
+        foreach (var item in caseItems)
+        {
+            if (item == null) continue;
+            currentChance += item.SpawnChance;
+            if (randomValue <= currentChance)
+                return item;
+        }
+        return caseItems[0]; // Fallback
+    }
+
+    private IEnumerator SpinRoulette()
+    {
+        float spinDuration = Random.Range(2f, 4f);
+        float elapsedTime = 0f;
+        float startPosition = roulettePanel.localPosition.x;
+        float targetPosition = startPosition - (totalItemsCount * itemSpacing);
+
+        while (elapsedTime < spinDuration)
+        {
+            float t = Mathf.SmoothStep(0f, 1f, elapsedTime / spinDuration);
+            roulettePanel.localPosition = new Vector3(Mathf.Lerp(startPosition, targetPosition, t), 0, 0);
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        roulettePanel.localPosition = new Vector3(targetPosition, 0, 0);
+        int winningIndex = GetClosestItemToArrow();
+        HandleSpinResult(winningIndex);
+        StartCoroutine(AnimateWinningItem(itemObjects[winningIndex]));
+        closeButton.gameObject.SetActive(true);
+    }
+
+    private int GetClosestItemToArrow()
+    {
+        int closestIndex = 0;
+        float closestDistance = float.MaxValue;
+        Vector3 arrowPosition = arrowSprite.transform.position;
+
+        for (int i = 0; i < itemObjects.Count; i++)
+        {
+            float distance = Mathf.Abs(itemObjects[i].transform.position.x - arrowPosition.x);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestIndex = i;
+            }
+        }
+        return closestIndex;
+    }
+
+    private void HandleSpinResult(int winningIndex)
+    {
+        CaseItem resultItem = rouletteItems[winningIndex];
+        resultItem.LoadActivationState();
+
+        if (resultItem.IsActivated)
+        {
+            int previousClicks = Clicker.GetClickCount();
+            Clicker.AddClicks(resultItem.BonusClicks);
+            int addedClicks = Clicker.GetClickCount() - previousClicks;
             messageManager.ShowMessage($"Предмет открыт, вы получили бонус: {addedClicks} кликов.");
+            achievementManager?.CheckAchievements(addedClicks);
         }
-
-        // Вызов проверки достижений после начисления кликов
-        if (achievementManager != null)
+        else
         {
-            achievementManager.CheckAchievements(addedClicks);
+            resultItem.IsActivated = true;
+            resultItem.SaveActivationState();
+            ChangeBackground(resultItem.BackgroundSprite);
+            EnableUnlockButton(resultItem);
+            messageManager.ShowMessage($"Поздравляем! Вы выиграли: {resultItem.ItemName}");
         }
+        clicker.UpdateAllScoreTexts();
     }
-    else
+    #endregion
+
+    #region UI Management
+    private void ToggleUI(bool isSpinning)
     {
-        // Если предмет не был активирован, просто активируем его без бонусов
-        resultItem.isActivated = true;
-        resultItem.SaveActivationState();
-
-        // Изменяем фон
-        if (backgroundImage != null && resultItem.backgroundSprite != null)
-        {
-            backgroundImage.sprite = resultItem.backgroundSprite;
-        }
-
-        EnableUnlockButton(resultItem);
-
-        if (messageManager != null)
-        {
-            messageManager.ShowMessage($"Поздравляем! Вы выиграли: {resultItem.itemName}");
-        }
-
-        Debug.Log($"Предмет {resultItem.itemName} активирован. Бонус НЕ начисляется при первом получении.");
+        roulettePanelUI.SetActive(isSpinning);
+        startButton.gameObject.SetActive(!isSpinning);
     }
+
+    private void CloseRoulettePanel()
+    {
+        ToggleUI(false);
+        closeButton.gameObject.SetActive(false);
+    }
+
+    private void EnableUnlockButton(CaseItem item)
+    {
+        ToggleButton(item.UnlockButton, true);
+        ToggleButton(item.LockedButton, false);
+        SecurePlayerPrefs.SetInt($"UnlockState_{item.ItemName}", 1);
+    }
+
+    private void LoadUnlockButtonsState()
+    {
+        foreach (var item in caseItems)
+        {
+            bool isUnlocked = SecurePlayerPrefs.GetInt($"UnlockState_{item.ItemName}", 0) == 1;
+            ToggleButton(item.UnlockButton, isUnlocked);
+            ToggleButton(item.LockedButton, !isUnlocked);
+        }
+    }
+
+    private void ToggleButton(Button button, bool isActive)
+    {
+        if (button != null)
+        {
+            button.interactable = isActive;
+            button.gameObject.SetActive(isActive);
+        }
+    }
+
+    private void SetupItemActivationListeners()
+    {
+        foreach (var item in caseItems)
+        {
+            if (item.UnlockButton != null)
+                item.UnlockButton.onClick.AddListener(() => item.ActivateItem());
+        }
+    }
+    #endregion
+
+    #region Animation
+    private IEnumerator AnimateWinningItem(GameObject winningItem)
+    {
+        Vector3 originalScale = winningItem.transform.localScale;
+        Vector3 enlargedScale = originalScale * 1.2f;
+        float duration = 0.5f;
+
+        yield return ScaleObject(winningItem, originalScale, enlargedScale, duration);
+        yield return ScaleObject(winningItem, enlargedScale, originalScale, duration);
+    }
+
+    private IEnumerator ScaleObject(GameObject obj, Vector3 startScale, Vector3 endScale, float duration)
+    {
+        float elapsedTime = 0f;
+        while (elapsedTime < duration)
+        {
+            obj.transform.localScale = Vector3.Lerp(startScale, endScale, elapsedTime / duration);
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+        obj.transform.localScale = endScale;
+    }
+    #endregion
+
+    #region Background Management
+    public void ChangeBackground(Sprite newBackground)
+    {
+        if (backgroundImage != null && newBackground != null)
+            backgroundImage.sprite = newBackground;
+        else
+            Debug.LogWarning("Не удалось изменить фон: BackgroundImage или новый фон не назначены.");
+    }
+    #endregion
+
+    #region Event Handlers
+    private void HandleClickAdded(int amount)
+    {
+        Debug.Log($"Клики изменены на {amount}. Текущее количество: {Clicker.GetClickCount()}");
+    }
+    #endregion
 }
-
-
-
-
-
-	// Метод для активации кнопок для выбранного предмета
-	private void EnableUnlockButton(CaseItem resultItem)
-	{
-		if (resultItem.unlockButton != null)
-		{
-			resultItem.unlockButton.interactable = true;
-			resultItem.unlockButton.gameObject.SetActive(true);
-		}
-
-		if (resultItem.lockedButton != null)
-		{
-			resultItem.lockedButton.interactable = false;
-			resultItem.lockedButton.gameObject.SetActive(false);
-		}
-
-		PlayerPrefs.SetInt("UnlockState_" + resultItem.itemName, 1);
-		PlayerPrefs.Save();
-	}
-
-
-	// Анимация для выделения выигравшего элемента
-	private IEnumerator AnimateWinningItem(GameObject winningItem)
-	{
-		Vector3 originalScale = winningItem.transform.localScale;
-		Vector3 enlargedScale = originalScale * 1.2f;
-		float duration = 0.5f;
-		float elapsedTime = 0f;
-
-		while (elapsedTime < duration)
-		{
-			winningItem.transform.localScale = Vector3.Lerp(originalScale, enlargedScale, elapsedTime / duration);
-			elapsedTime += Time.deltaTime;
-			yield return null;
-		}
-
-		elapsedTime = 0f;
-		while (elapsedTime < duration)
-		{
-			winningItem.transform.localScale = Vector3.Lerp(enlargedScale, originalScale, elapsedTime / duration);
-			elapsedTime += Time.deltaTime;
-			yield return null;
-		}
-
-		winningItem.transform.localScale = originalScale;
-	}
-
-	// Метод для закрытия панели рулетки
-	private void CloseRoulettePanel()
-	{
-		roulettePanelUI.SetActive(false);
-		startButton.gameObject.SetActive(true);
-		closeButton.gameObject.SetActive(false);
-	}
-
-	private void OnDestroy()
-	{
-		Clicker.OnClickAdded -= HandleClickAdded;
-	}
-
-	private void LoadUnlockButtonsState()
-	{
-		foreach (var item in caseItems)
-		{
-			// Получаем состояние кнопки для каждого предмета из PlayerPrefs
-			int state = PlayerPrefs.GetInt("UnlockState_" + item.itemName, 0);
-
-			if (state == 1)
-			{
-				// Если предмет был разблокирован (состояние 1), то кнопка активации должна быть активна
-				if (item.unlockButton != null)
-				{
-					item.unlockButton.interactable = true;  // Сделать кнопку активной
-					item.unlockButton.gameObject.SetActive(true);  // Сделать кнопку видимой
-				}
-
-				// Блокируем кнопку заглушки
-				if (item.lockedButton != null)
-				{
-					item.lockedButton.interactable = false;  // Блокируем кнопку
-					item.lockedButton.gameObject.SetActive(false);  // Скрываем кнопку
-				}
-			}
-			else
-			{
-				// Если предмет не был разблокирован (состояние 0), показываем кнопку блокировки
-				if (item.unlockButton != null)
-				{
-					item.unlockButton.interactable = false;  // Делаем кнопку неактивной
-					item.unlockButton.gameObject.SetActive(false);  // Скрываем кнопку
-				}
-
-				// Показываем кнопку блокировки
-				if (item.lockedButton != null)
-				{
-					item.lockedButton.interactable = true;  // Разрешаем её использование
-					item.lockedButton.gameObject.SetActive(true);  // Показываем кнопку
-				}
-			}
-		}
-	}
-
-
-	// Обработчик нажатия на кнопку активации
-	private void OnUnlockButtonClick(CaseItem resultItem)
-	{
-		if (backgroundImage != null && resultItem.backgroundSprite != null)
-		{
-			backgroundImage.sprite = resultItem.backgroundSprite;
-		}
-	}
-}
-
-
-
-
-// В структуре CaseItem добавим метод для обработки нажатия кнопки
 
 [System.Serializable]
 public class CaseItem
 {
-    public string itemName;              // Имя предмета
-    public Sprite itemSprite;            // Изображение предмета
-    [Range(0, 1)] public float spawnChance; // Шанс появления предмета
+    [SerializeField] private string itemName;
+    [SerializeField] private Sprite itemSprite;
+    [SerializeField, Range(0f, 1f)] private float spawnChance;
+    [SerializeField] public Button lockedButton;
+    [SerializeField] public Button unlockButton;
+    [SerializeField] private Sprite backgroundSprite;
+    [SerializeField] private int bonusClicks;
+    [SerializeField] public bool isActivated;
 
-    public Button lockedButton;           // Кнопка заглушки
-    public Button unlockButton;           // Кнопка выбора фона
+    public string ItemName => itemName;
+    public Sprite ItemSprite => itemSprite;
+    public float SpawnChance => spawnChance;
+    public Button LockedButton => lockedButton;
+    public Button UnlockButton => unlockButton;
+    public Sprite BackgroundSprite => backgroundSprite;
+    public int BonusClicks => bonusClicks;
+    public bool IsActivated { get => isActivated; set => isActivated = value; }
 
-    public Sprite backgroundSprite;      // Фон, который будет отображаться при выборе предмета
-    public int bonusClicks;              // Количество бонусных кликов
-    public bool isActivated = false;     // Параметр, указывающий активирован ли предмет
-
-    // Метод для загрузки состояния активации
     public void LoadActivationState()
     {
-        string key = "item_" + itemName;
-        isActivated = SecurePlayerPrefs.GetInt(key, 0) == 1;
+        IsActivated = SecurePlayerPrefs.GetInt($"item_{ItemName}", 0) == 1;
     }
 
-    // Метод для сохранения состояния активации
     public void SaveActivationState()
     {
-        string key = "item_" + itemName;
-        SecurePlayerPrefs.SetInt(key, isActivated ? 1 : 0);
+        SecurePlayerPrefs.SetInt($"item_{ItemName}", IsActivated ? 1 : 0);
     }
 
-    // Метод для активации фона
     public void ActivateItem()
     {
-        if (backgroundSprite != null)
+        if (BackgroundSprite != null)
         {
-            // Меняем фон
-            RouletteManager.Instance.ChangeBackground(backgroundSprite);
-
-            // Сохраняем выбранный фон
-            SecurePlayerPrefs.SetString("SelectedBackground", itemName);
+            CaseManager.Instance.ChangeBackground(BackgroundSprite);
+            SecurePlayerPrefs.SetString("SelectedBackground", ItemName);
         }
         else
         {
-            Debug.LogWarning("backgroundSprite не задан для предмета!");
+            Debug.LogWarning($"BackgroundSprite не задан для предмета '{ItemName}'!");
         }
     }
 }

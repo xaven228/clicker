@@ -5,219 +5,187 @@ using UnityEngine;
 
 public static class SecurePlayerPrefs
 {
-    private const string encryptionKey = "YourEncryptionKey123"; // Ключ для шифрования
-    private static readonly byte[] key = Encoding.UTF8.GetBytes(encryptionKey.Substring(0, 16)); // 128-bit key
-    private const string HASH_SUFFIX = "_hash";
+    private const string ENCRYPTION_KEY = "YourEncryptionKey123"; // Секретный ключ шифрования (рекомендуется изменить)
+    private static readonly byte[] Key = Encoding.UTF8.GetBytes(ENCRYPTION_KEY.PadRight(16, ' ').Substring(0, 16)); // 128-битный ключ AES
+    private const string IV_SUFFIX = "_iv"; // Суффикс для вектора инициализации
+    private const string HASH_SUFFIX = "_hash"; // Суффикс для хэша
 
-    // Метод для шифрования строки
+    #region Encryption/Decryption
+    /// <summary>
+    /// Шифрует строку с использованием AES.
+    /// </summary>
     private static string Encrypt(string data, out byte[] iv)
     {
-        using (Aes aesAlg = Aes.Create())
+        using (Aes aes = Aes.Create())
         {
-            aesAlg.Key = key;
-            aesAlg.GenerateIV();
-            iv = aesAlg.IV;
+            aes.Key = Key;
+            aes.GenerateIV();
+            iv = aes.IV;
 
-            ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
-
-            byte[] dataBytes = Encoding.UTF8.GetBytes(data);
-            byte[] encryptedData = encryptor.TransformFinalBlock(dataBytes, 0, dataBytes.Length);
-
-            return Convert.ToBase64String(encryptedData);
+            using (ICryptoTransform encryptor = aes.CreateEncryptor(aes.Key, aes.IV))
+            {
+                byte[] dataBytes = Encoding.UTF8.GetBytes(data);
+                byte[] encryptedBytes = encryptor.TransformFinalBlock(dataBytes, 0, dataBytes.Length);
+                return Convert.ToBase64String(encryptedBytes);
+            }
         }
     }
 
-    // Метод для расшифровки строки
+    /// <summary>
+    /// Расшифровывает строку с использованием AES.
+    /// </summary>
     private static string Decrypt(string encryptedData, byte[] iv)
     {
-        using (Aes aesAlg = Aes.Create())
+        using (Aes aes = Aes.Create())
         {
-            aesAlg.Key = key;
-            aesAlg.IV = iv;
+            aes.Key = Key;
+            aes.IV = iv;
 
-            ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
-
-            byte[] encryptedBytes = Convert.FromBase64String(encryptedData);
-            byte[] decryptedData = decryptor.TransformFinalBlock(encryptedBytes, 0, encryptedBytes.Length);
-
-            return Encoding.UTF8.GetString(decryptedData);
+            using (ICryptoTransform decryptor = aes.CreateDecryptor(aes.Key, aes.IV))
+            {
+                byte[] encryptedBytes = Convert.FromBase64String(encryptedData);
+                byte[] decryptedBytes = decryptor.TransformFinalBlock(encryptedBytes, 0, encryptedBytes.Length);
+                return Encoding.UTF8.GetString(decryptedBytes);
+            }
         }
     }
+    #endregion
 
-    // Метод для вычисления хэша
+    #region Hashing
+    /// <summary>
+    /// Вычисляет SHA-256 хэш для строки.
+    /// </summary>
     private static string CalculateHash(string input)
     {
         using (SHA256 sha256 = SHA256.Create())
         {
-            byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
-            StringBuilder builder = new StringBuilder();
-            foreach (byte b in bytes)
-            {
-                builder.Append(b.ToString("x2"));
-            }
-            return builder.ToString();
+            byte[] hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
+            return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
         }
     }
 
-    // Метод для проверки хэша
-    private static bool VerifyHash(string input, string hash)
+    /// <summary>
+    /// Проверяет целостность данных через сравнение хэшей.
+    /// </summary>
+    private static bool VerifyHash(string input, string storedHash)
     {
-        string newHash = CalculateHash(input);
-        return newHash.Equals(hash, StringComparison.OrdinalIgnoreCase);
+        return CalculateHash(input).Equals(storedHash, StringComparison.OrdinalIgnoreCase);
     }
+    #endregion
 
-    // Сохранение зашифрованного значения для int и хэширование
+    #region Set Methods
+    /// <summary>
+    /// Сохраняет зашифрованное целое число с проверочным хэшем.
+    /// </summary>
     public static void SetInt(string key, int value)
     {
-        byte[] iv;
-        string encryptedValue = Encrypt(value.ToString(), out iv);
-        PlayerPrefs.SetString(key, encryptedValue);
-        PlayerPrefs.SetString(key + "_iv", Convert.ToBase64String(iv));
-
-        string hash = CalculateHash(value.ToString());
-        PlayerPrefs.SetString(key + HASH_SUFFIX, hash);
-
-        PlayerPrefs.Save(); // Убедимся, что данные сохраняются
+        SaveEncryptedValue(key, value.ToString());
     }
 
-    // Получение расшифрованного значения для int с проверкой хэша
-    public static int GetInt(string key, int defaultValue)
-    {
-        if (!PlayerPrefs.HasKey(key) || !PlayerPrefs.HasKey(key + "_iv"))
-        {
-            return defaultValue;
-        }
-
-        string encryptedValue = PlayerPrefs.GetString(key);
-        byte[] iv = Convert.FromBase64String(PlayerPrefs.GetString(key + "_iv"));
-        string savedHash = PlayerPrefs.GetString(key + HASH_SUFFIX);
-
-        try
-        {
-            string decryptedValue = Decrypt(encryptedValue, iv);
-            if (VerifyHash(decryptedValue, savedHash))
-            {
-                return int.Parse(decryptedValue);
-            }
-            else
-            {
-                Debug.LogWarning($"Data tampering detected for key: {key}");
-                return defaultValue;
-            }
-        }
-        catch (FormatException ex)
-        {
-            Debug.LogError($"Ошибка при расшифровке данных для ключа {key}: {ex.Message}");
-            return defaultValue;
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"Неизвестная ошибка при расшифровке данных для ключа {key}: {ex.Message}");
-            return defaultValue;
-        }
-    }
-
-    // Сохранение зашифрованного значения для float и хэширование
+    /// <summary>
+    /// Сохраняет зашифрованное число с плавающей точкой с проверочным хэшем.
+    /// </summary>
     public static void SetFloat(string key, float value)
     {
-        byte[] iv;
-        string encryptedValue = Encrypt(value.ToString(), out iv);
-        PlayerPrefs.SetString(key, encryptedValue);
-        PlayerPrefs.SetString(key + "_iv", Convert.ToBase64String(iv));
-
-        string hash = CalculateHash(value.ToString());
-        PlayerPrefs.SetString(key + HASH_SUFFIX, hash);
-
-        PlayerPrefs.Save();
+        SaveEncryptedValue(key, value.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
-    // Получение расшифрованного значения для float с проверкой хэша
-    public static float GetFloat(string key, float defaultValue)
-    {
-        if (!PlayerPrefs.HasKey(key) || !PlayerPrefs.HasKey(key + "_iv"))
-        {
-            return defaultValue;
-        }
-
-        string encryptedValue = PlayerPrefs.GetString(key);
-        byte[] iv = Convert.FromBase64String(PlayerPrefs.GetString(key + "_iv"));
-        string savedHash = PlayerPrefs.GetString(key + HASH_SUFFIX);
-
-        try
-        {
-            string decryptedValue = Decrypt(encryptedValue, iv);
-            if (VerifyHash(decryptedValue, savedHash))
-            {
-                return float.Parse(decryptedValue);
-            }
-            else
-            {
-                Debug.LogWarning($"Data tampering detected for key: {key}");
-                return defaultValue;
-            }
-        }
-        catch (FormatException ex)
-        {
-            Debug.LogError($"Ошибка при расшифровке данных для ключа {key}: {ex.Message}");
-            return defaultValue;
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"Неизвестная ошибка при расшифровке данных для ключа {key}: {ex.Message}");
-            return defaultValue;
-        }
-    }
-
-    // Сохранение зашифрованного значения для string и хэширование
+    /// <summary>
+    /// Сохраняет зашифрованную строку с проверочным хэшем.
+    /// </summary>
     public static void SetString(string key, string value)
+    {
+        SaveEncryptedValue(key, value);
+    }
+
+    private static void SaveEncryptedValue(string key, string value)
     {
         byte[] iv;
         string encryptedValue = Encrypt(value, out iv);
-        PlayerPrefs.SetString(key, encryptedValue);
-        PlayerPrefs.SetString(key + "_iv", Convert.ToBase64String(iv));
-
         string hash = CalculateHash(value);
-        PlayerPrefs.SetString(key + HASH_SUFFIX, hash);
 
+        PlayerPrefs.SetString(key, encryptedValue);
+        PlayerPrefs.SetString(key + IV_SUFFIX, Convert.ToBase64String(iv));
+        PlayerPrefs.SetString(key + HASH_SUFFIX, hash);
         PlayerPrefs.Save();
     }
+    #endregion
 
-    // Получение расшифрованного значения для string с проверкой хэша
+    #region Get Methods
+    /// <summary>
+    /// Получает расшифрованное целое число с проверкой целостности.
+    /// </summary>
+    public static int GetInt(string key, int defaultValue)
+    {
+        return GetValue(key, defaultValue, int.Parse);
+    }
+
+    /// <summary>
+    /// Получает расшифрованное число с плавающей точкой с проверкой целостности.
+    /// </summary>
+    public static float GetFloat(string key, float defaultValue)
+    {
+        return GetValue(key, defaultValue, s => float.Parse(s, System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>
+    /// Получает расшифрованную строку с проверкой целостности.
+    /// </summary>
     public static string GetString(string key, string defaultValue)
     {
-        if (!PlayerPrefs.HasKey(key) || !PlayerPrefs.HasKey(key + "_iv"))
+        return GetValue(key, defaultValue, s => s);
+    }
+
+    private static T GetValue<T>(string key, T defaultValue, Func<string, T> parser)
+    {
+        if (!PlayerPrefs.HasKey(key) || !PlayerPrefs.HasKey(key + IV_SUFFIX))
         {
             return defaultValue;
         }
-
-        string encryptedValue = PlayerPrefs.GetString(key);
-        byte[] iv = Convert.FromBase64String(PlayerPrefs.GetString(key + "_iv"));
-        string savedHash = PlayerPrefs.GetString(key + HASH_SUFFIX);
 
         try
         {
+            string encryptedValue = PlayerPrefs.GetString(key);
+            byte[] iv = Convert.FromBase64String(PlayerPrefs.GetString(key + IV_SUFFIX));
+            string storedHash = PlayerPrefs.GetString(key + HASH_SUFFIX);
+
             string decryptedValue = Decrypt(encryptedValue, iv);
-            if (VerifyHash(decryptedValue, savedHash))
+            if (VerifyHash(decryptedValue, storedHash))
             {
-                return decryptedValue;
+                return parser(decryptedValue);
             }
             else
             {
-                Debug.LogWarning($"Data tampering detected for key: {key}");
+                Debug.LogWarning($"Обнаружено вмешательство в данные для ключа: {key}");
                 return defaultValue;
             }
         }
+        catch (FormatException ex)
+        {
+            Debug.LogError($"Ошибка формата при расшифровке ключа {key}: {ex.Message}");
+            return defaultValue;
+        }
+        catch (CryptographicException ex)
+        {
+            Debug.LogError($"Ошибка шифрования при расшифровке ключа {key}: {ex.Message}");
+            return defaultValue;
+        }
         catch (Exception ex)
         {
-            Debug.LogError($"Ошибка при расшифровке данных для ключа {key}: {ex.Message}");
+            Debug.LogError($"Неизвестная ошибка при расшифровке ключа {key}: {ex.Message}");
             return defaultValue;
         }
     }
+    #endregion
 
-    // Очищаем PlayerPrefs
+    #region Utility
+    /// <summary>
+    /// Очищает все сохранённые данные в PlayerPrefs.
+    /// </summary>
     public static void ClearPlayerPrefs()
     {
         PlayerPrefs.DeleteAll();
         PlayerPrefs.Save();
     }
+    #endregion
 }

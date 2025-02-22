@@ -1,169 +1,143 @@
 using UnityEngine;
+using UnityEngine.UI; // Добавлено пространство имён для Button
 
 public class ResetData : MonoBehaviour
 {
-    [Header("References")]
+    [Header("Dependencies")]
     [SerializeField] private Clicker clicker;
     [SerializeField] private AchievementManager achievementManager;
     [SerializeField] private UpgradeManager upgradeManager;
     [SerializeField] private SpriteRenderer background;
-    [SerializeField] private CaseItem[] caseItems; // Добавление массива предметов
+
+    [Header("Inventory Items")]
+    [SerializeField] private CaseItem[] caseItems;
 
     [Header("Default Settings")]
     [SerializeField] private Sprite defaultBackground;
 
-    // Метод для полного сброса данных
+    #region Public Methods
+    /// <summary>
+    /// Выполняет полный сброс всех данных игры.
+    /// </summary>
     public void ResetAllData()
     {
-        // Сбрасываем данные по модулям
         ResetClickerData();
         ResetAchievementData();
         ResetInventoryData();
         ResetBackgroundData();
         SecurePlayerPrefs.ClearPlayerPrefs();
 
-        Debug.Log("Все данные сброшены!");
-
-        // Обновляем интерфейс
+        Debug.Log("Все данные успешно сброшены!");
         UpdateScoreUI();
     }
+    #endregion
 
-    // Сброс данных для Clicker
+    #region Reset Methods
     private void ResetClickerData()
     {
-        if (clicker != null)
-        {
-            // Сбрасываем прогресс кликера
-            Clicker.ResetProgress();
+        if (!ValidateReference(clicker, nameof(clicker))) return;
 
-            // Сбрасываем все клики и множители до нуля
-            Clicker.SetGlobalMultiplier(1f);
-            Clicker.RemoveClicks(Clicker.GetClickCount());
-        }
-        else
-        {
-            Debug.LogWarning("Clicker не назначен в инспекторе.");
-        }
+        Clicker.ResetProgress();
+        Clicker.SetGlobalMultiplier(1f);
+        Clicker.RemoveClicks(Clicker.GetClickCount());
     }
 
-    // Сброс данных для AchievementManager
     private void ResetAchievementData()
     {
-        if (achievementManager != null)
+        if (!ValidateReference(achievementManager, nameof(achievementManager))) return;
+
+        foreach (var achievement in achievementManager.Achievements)
         {
-            foreach (var achievement in achievementManager.achievements)
+            if (achievement != null)
             {
-                achievement.isUnlocked = false;
-
-                // Сохраняем сброшенное достижение в SecurePlayerPrefs
-                string unlockedKey = $"AchievementUnlocked_{achievement.achievementName}";
-                SecurePlayerPrefs.SetInt(unlockedKey, 0); // 0 означает, что достижение не выполнено
+                achievement.IsUnlocked = false;
+                SecurePlayerPrefs.SetInt($"AchievementUnlocked_{achievement.AchievementName}", 0);
             }
-
-            // Обновляем интерфейс достижений
-            achievementManager.UpdateAchievementUI();
         }
-        else
-        {
-            Debug.LogWarning("AchievementManager не назначен в инспекторе.");
-        }
+        achievementManager.UpdateAchievementUI();
     }
 
-    // Сброс данных для инвентаря и улучшений
     private void ResetInventoryData()
     {
-        if (upgradeManager != null)
+        ResetUpgrades();
+        ResetCaseItems();
+    }
+
+    private void ResetUpgrades()
+    {
+        if (!ValidateReference(upgradeManager, nameof(upgradeManager))) return;
+
+        foreach (var upgrade in upgradeManager.Upgrades)
         {
-            foreach (var upgrade in upgradeManager.upgrades)
+            if (upgrade != null)
             {
-                ResetUpgradeData(upgrade);
+                upgrade.SetPurchased(false);
+                SecurePlayerPrefs.SetInt($"UpgradePurchased_{upgrade.UpgradeName}", 0);
+
+                if (upgrade.UpgradeButton != null)
+                    upgrade.UpgradeButton.interactable = true;
+
+                if (upgrade.PriceText != null)
+                    upgrade.PriceText.text = $"Цена: {upgrade.Price}";
             }
         }
-        else
+        upgradeManager.RefreshUI();
+    }
+
+    private void ResetCaseItems()
+    {
+        if (caseItems == null || caseItems.Length == 0)
         {
-            Debug.LogWarning("UpgradeManager не назначен в инспекторе.");
+            Debug.LogWarning("Массив CaseItems не назначен или пуст.");
+            return;
         }
 
-        // Сброс данных для предметов
-        if (caseItems != null)
+        foreach (var item in caseItems)
         {
-            foreach (var item in caseItems)
+            if (item != null)
             {
                 item.isActivated = false;
                 item.SaveActivationState();
-                
-                // Обновляем кнопки
-                if (item.lockedButton != null)
-                {
-                    item.lockedButton.gameObject.SetActive(true);
-                }
-                if (item.unlockButton != null)
-                {
-                    item.unlockButton.gameObject.SetActive(false);
-                }
+
+                ToggleButtonVisibility(item.lockedButton, true);
+                ToggleButtonVisibility(item.unlockButton, false);
             }
-        }
-        else
-        {
-            Debug.LogWarning("CaseItems не назначены в инспекторе.");
         }
     }
 
-    // Сброс состояния отдельного улучшения
-    private void ResetUpgradeData(Upgrade upgrade)
-    {
-        if (upgrade != null)
-        {
-            upgrade.isPurchased = false;
-
-            // Восстанавливаем интерфейс улучшений
-            if (upgrade.upgradeButton != null)
-            {
-                upgrade.upgradeButton.interactable = true; // Делаем кнопку активной
-            }
-
-            if (upgrade.priceText != null)
-            {
-                upgrade.priceText.text = $"Цена: {upgrade.price}"; // Восстанавливаем текст цены
-            }
-
-            // Удаляем состояние покупки из SecurePlayerPrefs
-            string key = "UpgradePurchased_" + upgrade.upgradeName;
-            SecurePlayerPrefs.SetInt(key, 0);
-        }
-        else
-        {
-            Debug.LogWarning("Upgrade не назначен или отсутствует.");
-        }
-    }
-
-    // Сброс фона
     private void ResetBackgroundData()
     {
-        if (background != null && defaultBackground != null)
-        {
-            background.sprite = defaultBackground;
-            Debug.Log("Фон сброшен.");
-        }
-        else
-        {
-            Debug.LogWarning("Background или DefaultBackground не назначены в инспекторе.");
-        }
+        if (!ValidateReference(background, nameof(background)) || !ValidateReference(defaultBackground, nameof(defaultBackground))) return;
 
-        // Сбрасываем сохраненный фон в SecurePlayerPrefs
+        background.sprite = defaultBackground;
         SecurePlayerPrefs.SetString("SelectedBackground", string.Empty);
+        Debug.Log("Фон сброшен до значения по умолчанию.");
     }
+    #endregion
 
-    // Обновление интерфейса с текстами счёта
+    #region UI Updates
     private void UpdateScoreUI()
     {
-        if (clicker != null)
-        {
-            clicker.UpdateAllScoreTexts();
-        }
-        else
-        {
-            Debug.LogWarning("Clicker не назначен в инспекторе.");
-        }
+        if (!ValidateReference(clicker, nameof(clicker))) return;
+        clicker.UpdateAllScoreTexts();
     }
+    #endregion
+
+    #region Helper Methods
+    private bool ValidateReference(Object obj, string fieldName)
+    {
+        if (obj == null)
+        {
+            Debug.LogWarning($"{fieldName} не назначен в инспекторе.");
+            return false;
+        }
+        return true;
+    }
+
+    private void ToggleButtonVisibility(Button button, bool isActive)
+    {
+        if (button != null)
+            button.gameObject.SetActive(isActive);
+    }
+    #endregion
 }

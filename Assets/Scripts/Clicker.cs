@@ -1,252 +1,260 @@
+using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Collections;
-using System.Collections.Generic;
 
 public class Clicker : MonoBehaviour
 {
-    public Text scoreText;
-    public Text[] additionalScoreTexts;
-    public Button clickButton;
+    [Header("UI Elements")]
+    [SerializeField] private Text scoreText;
+    [SerializeField] private Button clickButton;
+    [SerializeField] private Text multiplierText;
+    [SerializeField] private Text[] additionalScoreTexts = new Text[0];
 
-    private static int _clickCount = 0;
-    public static Clicker Instance;
+    [Header("Game Settings")]
+    [SerializeField] private float clicksPerSecondLimit = 10f;
+    [SerializeField, Range(0f, 1f)] private float bossSpawnChance = 0.05f;
+    [SerializeField] private int bossMaxHealth = 100;
+    [SerializeField] private float bossTimeLimit = 30f;
+    [SerializeField] private int bossReward = 100;
 
+    [Header("Dependencies")]
+    [SerializeField] private MessageManager messageManager;
+
+    private static int clickCount = 0;
     private static float globalMultiplier = 1f;
+    private static Clicker instance;
 
-    public static event System.Action<int> OnClickAdded;
+    private float lastClickTime;
+    private int clicksThisSecond;
+    private bool isBossFightActive;
+    private int bossCurrentHealth;
+    private float bossTimeRemaining;
 
     private const string CLICK_COUNT_KEY = "ClickCount";
     private const string MULTIPLIER_KEY = "GlobalMultiplier";
 
-    public float clicksPerSecondLimit = 10f;
-    private float lastClickTime = 0f;
-    private int clicksThisSecond = 0;
+    public static event Action<int> OnClickAdded;
+    public static Clicker Instance => instance;
 
-    private static List<string> activatedItems = new List<string>();
-
-    // Новые переменные для босса
-    public GameObject bossPanel; // Панель с боссом
-    public Slider bossHealthBar; // HP бар босса
-    public Text bossTimerText; // Таймер на убийство босса
-    public int bossMaxHealth = 100; // Максимальное HP босса
-    private int bossCurrentHealth; // Текущее HP босса
-    public float bossTimeLimit = 30f; // Время на убийство босса
-    private float bossTimeRemaining; // Оставшееся время
-    private bool isBossFightActive = false; // Флаг активности боя с боссом
-    public int bossReward = 100; // Награда за победу над боссом
-    public int bossPenalty = 50; // Штраф за проигрыш
-
-    public static int GetClickCount()
-    {
-        return _clickCount;
-    }
+    #region Properties and Static Methods
+    public static int GetClickCount() => clickCount;
+    public static float GetGlobalMultiplier() => globalMultiplier;
 
     public static void SetClickCount(int value)
     {
-        _clickCount = value;
-        SaveData(CLICK_COUNT_KEY, _clickCount);
+        clickCount = Mathf.Max(0, value);
+        SaveData(CLICK_COUNT_KEY, clickCount);
+        instance?.UpdateAllScoreTexts();
     }
 
     public static void AddClicks(int amount)
     {
-        _clickCount += Mathf.RoundToInt(amount * globalMultiplier);
-        SaveData(CLICK_COUNT_KEY, _clickCount);
-        OnClickAdded?.Invoke(amount);
+        int adjustedAmount = Mathf.RoundToInt(amount * globalMultiplier);
+        clickCount += adjustedAmount;
+        SaveData(CLICK_COUNT_KEY, clickCount);
+        OnClickAdded?.Invoke(adjustedAmount);
+        instance?.UpdateAllScoreTexts();
     }
 
     public static void RemoveClicks(int amount)
     {
-        _clickCount = Mathf.Max(0, _clickCount - amount);
-        SaveData(CLICK_COUNT_KEY, _clickCount);
+        int adjustedAmount = Mathf.RoundToInt(amount * globalMultiplier);
+        clickCount = Mathf.Max(0, clickCount - adjustedAmount);
+        SaveData(CLICK_COUNT_KEY, clickCount);
+        instance?.UpdateAllScoreTexts();
     }
 
     public static void SetGlobalMultiplier(float multiplier)
     {
-        globalMultiplier = multiplier;
+        globalMultiplier = Mathf.Max(1f, multiplier);
         SaveData(MULTIPLIER_KEY, globalMultiplier);
-    }
-
-    public static float GetGlobalMultiplier()
-    {
-        return globalMultiplier;
+        instance?.UpdateAllScoreTexts();
     }
 
     public static void MultiplyGlobalMultiplier(float multiplier)
     {
         globalMultiplier *= multiplier;
         SaveData(MULTIPLIER_KEY, globalMultiplier);
+        instance?.UpdateAllScoreTexts();
     }
 
-    private static void SaveData(string key, int value)
+    public static void ResetProgress()
     {
-        SecurePlayerPrefs.SetInt(key, value);
+        clickCount = 0;
+        globalMultiplier = 1f;
+        SaveData(CLICK_COUNT_KEY, clickCount);
+        SaveData(MULTIPLIER_KEY, globalMultiplier);
+        instance?.UpdateAllScoreTexts();
+        Debug.Log("Прогресс сброшен.");
+    }
+    #endregion
+
+    #region Unity Methods
+    private void Awake()
+    {
+        SetupSingleton();
+        LoadData();
     }
 
-    private static void SaveData(string key, float value)
+    private void Start()
     {
-        SecurePlayerPrefs.SetFloat(key, value);
-    }
-
-    public void ShowNotification(string message)
-    {
-        Debug.Log(message);
-    }
-
-    void Start()
-    {
-        _clickCount = SecurePlayerPrefs.GetInt(CLICK_COUNT_KEY, 0);
-        globalMultiplier = SecurePlayerPrefs.GetFloat(MULTIPLIER_KEY, 1f);
+        if (!ValidateComponents()) return;
+        clickButton.onClick.AddListener(OnButtonClick);
         UpdateAllScoreTexts();
-
-        if (clickButton != null)
-        {
-            clickButton.onClick.AddListener(OnButtonClick);
-        }
-        else
-        {
-            Debug.LogError("Кнопка для кликов не назначена!");
-        }
-
-        // Инициализация босса
-        bossCurrentHealth = bossMaxHealth;
-        bossHealthBar.maxValue = bossMaxHealth;
-        bossHealthBar.value = bossCurrentHealth;
-        bossPanel.SetActive(false); // Скрываем панель босса при старте
     }
+    #endregion
 
-    public void OnButtonClick()
+    #region Initialization
+    private void SetupSingleton()
     {
-        if (Time.time - lastClickTime < 1f)
+        if (instance == null)
         {
-            clicksThisSecond++;
+            instance = this;
         }
-        else
-        {
-            clicksThisSecond = 1;
-        }
-
-        if (clicksThisSecond > clicksPerSecondLimit)
-        {
-            Debug.LogWarning("Лимит кликов в секунду превышен. Клик проигнорирован.");
-            return;
-        }
-
-        AddClicks(1);
-        UpdateAllScoreTexts();
-        lastClickTime = Time.time;
-
-        // Если бой с боссом активен, наносим урон боссу
-        if (isBossFightActive)
-        {
-            DamageBoss(1); // Наносим 1 урон за клик
-        }
-    }
-
-    void Awake()
-    {
-        LoadClickCount();
-
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else if (Instance != this)
+        else if (instance != this)
         {
             Destroy(gameObject);
         }
     }
 
-    public void UpdateAllScoreTexts()
+    private void LoadData()
     {
-        if (scoreText != null)
-        {
-            scoreText.text = "Клики: " + _clickCount;
-        }
+        clickCount = SecurePlayerPrefs.GetInt(CLICK_COUNT_KEY, 0);
+        globalMultiplier = SecurePlayerPrefs.GetFloat(MULTIPLIER_KEY, 1f);
+    }
 
-        foreach (var text in additionalScoreTexts)
+		private bool ValidateComponents()
+		{
+			if (clickButton == null) { Debug.LogError("ClickButton не назначен!"); enabled = false; return false; }
+			if (scoreText == null) { Debug.LogError("ScoreText не назначен!"); enabled = false; return false; }
+			if (multiplierText == null) { Debug.LogError("MultiplierText не назначен!"); enabled = false; return false; }
+			if (messageManager == null && !TryGetComponent(out messageManager))
+			{
+				messageManager = FindFirstObjectByType<MessageManager>(FindObjectsInactive.Include);
+				if (messageManager == null)
+				{
+					Debug.LogError("MessageManager не найден или не назначен!");
+					enabled = false;
+					return false;
+				}
+			}
+			return true;
+		}
+    #endregion
+
+    #region Click Handling
+    public void OnButtonClick()
+    {
+        if (!CanClick()) return;
+
+        AddClicks(1);
+        UpdateClickRate();
+        TrySpawnBoss();
+    }
+
+    private bool CanClick()
+    {
+        float timeSinceLastClick = Time.time - lastClickTime;
+        if (timeSinceLastClick < 1f)
         {
-            if (text != null)
+            clicksThisSecond++;
+            if (clicksThisSecond > clicksPerSecondLimit)
             {
-                text.text = "Клики: " + _clickCount;
+                Debug.LogWarning("Превышен лимит кликов в секунду!");
+                return false;
             }
         }
-    }
-
-    private void LoadClickCount()
-    {
-        _clickCount = SecurePlayerPrefs.GetInt("ClickCount", 0);
-    }
-
-    public static void ResetProgress()
-    {
-        _clickCount = 0;
-        globalMultiplier = 1f;
-        SaveData(CLICK_COUNT_KEY, _clickCount);
-        SecurePlayerPrefs.SetFloat(MULTIPLIER_KEY, globalMultiplier);
-        PlayerPrefs.Save();
-        Debug.Log("Прогресс сброшен.");
-    }
-
-    // Метод для начала боя с боссом
-    public void StartBossFight()
-    {
-        if (!isBossFightActive)
+        else
         {
-            isBossFightActive = true;
-            bossCurrentHealth = bossMaxHealth;
-            bossTimeRemaining = bossTimeLimit;
-            bossPanel.SetActive(true);
-            StartCoroutine(BossFightTimer());
+            clicksThisSecond = 1;
+        }
+        return true;
+    }
+
+    private void UpdateClickRate()
+    {
+        lastClickTime = Time.time;
+    }
+
+    private void TrySpawnBoss()
+    {
+        if (!isBossFightActive && UnityEngine.Random.value <= bossSpawnChance)
+        {
+            StartBossFight();
         }
     }
+    #endregion
 
-    // Корутина для таймера боя с боссом
+    #region Boss Fight
+    public void StartBossFight()
+    {
+        if (isBossFightActive) return;
+
+        isBossFightActive = true;
+        bossCurrentHealth = bossMaxHealth;
+        bossTimeRemaining = bossTimeLimit;
+        StartCoroutine(BossFightTimer());
+        messageManager.ShowMessage("Босс появился! У вас есть 30 секунд!");
+    }
+
     private IEnumerator BossFightTimer()
     {
         while (bossTimeRemaining > 0 && isBossFightActive)
         {
             bossTimeRemaining -= Time.deltaTime;
-            bossTimerText.text = "Осталось времени: " + Mathf.RoundToInt(bossTimeRemaining).ToString() + " сек.";
             yield return null;
         }
-
         if (isBossFightActive)
-        {
-            EndBossFight(false); // Время вышло, игрок проиграл
-        }
+            EndBossFight(false);
     }
 
-    // Метод для нанесения урона боссу
-    public void DamageBoss(int damage)
+    public void OnBossButtonClick()
     {
         if (isBossFightActive)
-        {
-            bossCurrentHealth -= damage;
-            bossHealthBar.value = bossCurrentHealth;
-
-            if (bossCurrentHealth <= 0)
-            {
-                EndBossFight(true); // Босс побежден
-            }
-        }
+            DamageBoss(1);
     }
 
-    // Метод для завершения боя с боссом
-    private void EndBossFight(bool isVictory)
+    private void DamageBoss(int damage)
+    {
+        bossCurrentHealth -= damage;
+        if (bossCurrentHealth <= 0)
+            EndBossFight(true);
+    }
+
+    private void EndBossFight(bool victory)
     {
         isBossFightActive = false;
-        bossPanel.SetActive(false);
-
-        if (isVictory)
+        if (victory)
         {
             AddClicks(bossReward);
-            ShowNotification("Победа! Вы получили " + bossReward + " кликов!");
+            messageManager.ShowWinMessage($"Победа! Вы получили {bossReward} кликов!");
         }
         else
         {
-            RemoveClicks(bossPenalty);
-            ShowNotification("Поражение! Вы потеряли " + bossPenalty + " кликов!");
+            messageManager.ShowLoseMessage("Время вышло! Босс сбежал.");
         }
     }
+    #endregion
+
+    #region UI Updates
+    public void UpdateAllScoreTexts()
+    {
+        UpdateText(scoreText, $"Клики: {clickCount}");
+        foreach (var text in additionalScoreTexts)
+            UpdateText(text, $"Клики: {clickCount}");
+        UpdateText(multiplierText, $"Множитель: x{globalMultiplier:F1}");
+    }
+
+    private void UpdateText(Text text, string value)
+    {
+        if (text != null)
+            text.text = value;
+    }
+    #endregion
+
+    #region Data Management
+    private static void SaveData(string key, int value) => SecurePlayerPrefs.SetInt(key, value);
+    private static void SaveData(string key, float value) => SecurePlayerPrefs.SetFloat(key, value);
+    #endregion
 }

@@ -1,16 +1,37 @@
 using UnityEngine;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 public class QuitGame : MonoBehaviour
 {
-    // Метод для закрытия игры
+    #region Public Methods
+    /// <summary>
+    /// Закрывает приложение или останавливает воспроизведение в редакторе Unity.
+    /// </summary>
     public void ExitGame()
     {
-        Debug.Log("Игра закрывается...");
+        LogExitMessage();
+        PerformQuit();
+    }
+    #endregion
+
+    #region Private Methods
+    private void LogExitMessage()
+    {
+        Debug.Log("Закрытие игры инициировано...");
+    }
+
+    private void PerformQuit()
+    {
+        // Выход из приложения для билда
         Application.Quit();
 
-        // Если вы тестируете в редакторе Unity, используйте это:
-        #if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-        #endif
+        // Остановка воспроизведения в редакторе Unity
+#if UNITY_EDITOR
+        EditorApplication.isPlaying = false;
+#endif
     }
+    #endregion
 }
