@@ -309,7 +309,7 @@ RectTransform:
   m_Father: {fileID: 124429853}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -1621,7 +1621,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &319167051
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2356,7 +2356,7 @@ RectTransform:
   m_Father: {fileID: 2025236759}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -2551,12 +2551,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 38fa0cdfe28b1cf4593853deafb4ddef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  messageText: {fileID: 2013573940}
-  messageDuration: 3
-  delayBetweenMessages: 0.5
-  imageNotificationPrefab: {fileID: 813637454}
-  notificationParent: {fileID: 813637455}
-  enableImageNotifications: 0
+  notificationContainerPrefab: {fileID: 813637454}
+  notificationTextPrefab: {fileID: 569647668}
+  newNotificationDisplayTime: 3
 --- !u!4 &423240368
 Transform:
   m_ObjectHideFlags: 0
@@ -2855,7 +2852,7 @@ RectTransform:
   m_Father: {fileID: 349311736}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 10, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -3350,6 +3347,11 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &569647668 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 354810445056239208, guid: bbde38d1119c8dd47aaa87e684a54b74, type: 3}
+  m_PrefabInstance: {fileID: 2013573939}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &571862076
 GameObject:
   m_ObjectHideFlags: 0
@@ -5242,10 +5244,10 @@ RectTransform:
   - {fileID: 2013573941}
   m_Father: {fileID: 401221890}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -674.91, y: 388.46}
-  m_SizeDelta: {x: 570.43, y: 303.08}
+  m_AnchorMin: {x: 0, y: 0.7191852}
+  m_AnchorMax: {x: 0.293, y: 1}
+  m_AnchoredPosition: {x: 4.214966, y: 0.039978027}
+  m_SizeDelta: {x: 8.429993, y: 0.07998657}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &813637456
 MonoBehaviour:
@@ -6169,9 +6171,6 @@ MonoBehaviour:
   - {fileID: 870213640}
   clicksPerSecondLimit: 150
   bossSpawnChance: 1
-  bossMaxHealth: 70
-  bossTimeLimit: 10
-  bossReward: 3000
   messageManager: {fileID: 423240367}
 --- !u!1 &1039635983
 GameObject:
@@ -6600,7 +6599,7 @@ RectTransform:
   m_Father: {fileID: 910210665}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -6750,7 +6749,7 @@ RectTransform:
   m_Father: {fileID: 607435294}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 10, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -6963,7 +6962,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1307502001
 RectTransform:
   m_ObjectHideFlags: 0
@@ -8573,7 +8572,7 @@ RectTransform:
   m_Father: {fileID: 1427461240}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 10, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -8751,6 +8750,60 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1665145051}
   m_CullTransparentMesh: 1
+--- !u!1 &1683807315
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1683807317}
+  - component: {fileID: 1683807316}
+  m_Layer: 0
+  m_Name: Boss-manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1683807316
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1683807315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b138213f6157cd4fac0a1a51a130f7b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 70
+  timeLimit: 10
+  reward: 3000
+  bossPanel: {fileID: 1039635983}
+  healthSlider: {fileID: 9223245}
+  timerText: {fileID: 1947166404}
+  attackButton: {fileID: 1930555626}
+  messageManager: {fileID: 423240367}
+  clicker: {fileID: 1038183718}
+  penalty: 1000
+--- !u!4 &1683807317
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1683807315}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 1111.1857, y: 637.8273, z: -1.8049631}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1689464297
 GameObject:
   m_ObjectHideFlags: 0
@@ -10713,17 +10766,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: bbde38d1119c8dd47aaa87e684a54b74, type: 3}
---- !u!114 &2013573940 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 7557952673036899100, guid: bbde38d1119c8dd47aaa87e684a54b74, type: 3}
-  m_PrefabInstance: {fileID: 2013573939}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!224 &2013573941 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 6516858793498811860, guid: bbde38d1119c8dd47aaa87e684a54b74, type: 3}
@@ -11590,4 +11632,5 @@ SceneRoots:
   - {fileID: 423240368}
   - {fileID: 661960113}
   - {fileID: 444857158}
+  - {fileID: 1683807317}
   - {fileID: 464142613}
