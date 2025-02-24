@@ -700,7 +700,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &155578661
 RectTransform:
   m_ObjectHideFlags: 0
@@ -6447,7 +6447,7 @@ MonoBehaviour:
   - {fileID: 88182092}
   - {fileID: 870213640}
   clicksPerSecondLimit: 150
-  bossSpawnChance: 1
+  bossSpawnChance: 0.001
   messageManager: {fileID: 423240367}
 --- !u!114 &1038183719
 MonoBehaviour:
@@ -7429,7 +7429,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1324357905
 RectTransform:
   m_ObjectHideFlags: 0
@@ -7599,17 +7599,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 9204510300340085012, guid: 217df3b4e9e6d0645ba90991e5a7f9d4, type: 3}
   m_PrefabInstance: {fileID: 1335583633}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1335583635 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 7015962493734359513, guid: 217df3b4e9e6d0645ba90991e5a7f9d4, type: 3}
-  m_PrefabInstance: {fileID: 1335583633}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1362537000
 GameObject:
   m_ObjectHideFlags: 0
@@ -11731,13 +11720,13 @@ MonoBehaviour:
     - {fileID: 1375737368}
   rightClickPanelPairs:
   - pairName: "\u0436\u0433\u0451\u043C \u0446\u044B\u0433\u0430\u043D"
-    button: {fileID: 1812834821}
+    button: {fileID: 0}
     panelsToOpen:
     - {fileID: 155578660}
     panelsToClose:
     - {fileID: 1324357904}
   - pairName: "\u0432\u044B\u0445\u043E\u0434 \u0438\u0437 \u0446\u044B\u0433\u0430\u043D"
-    button: {fileID: 1335583635}
+    button: {fileID: 0}
     panelsToOpen:
     - {fileID: 1324357904}
     panelsToClose:
