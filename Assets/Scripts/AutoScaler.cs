@@ -2,52 +2,43 @@ using UnityEngine;
 using UnityEngine.UI;
 
 [RequireComponent(typeof(CanvasScaler))]
-public class AutoScaler : MonoBehaviour
+public class CanvasAutoScaler : MonoBehaviour
 {
     [Header("Scaler Settings")]
-    [Tooltip("Базовое разрешение для масштабирования UI")]
-    [SerializeField] private Vector2 referenceResolution = new Vector2(1920, 1080);
+    [Tooltip("Target resolution for scaling the UI")]
+    [SerializeField] private Vector2 targetResolution = new Vector2(1920, 1080);
 
-    [Tooltip("Баланс между шириной и высотой (0 - только ширина, 1 - только высота)")]
+    [Tooltip("Ratio for matching width or height (0 for width, 1 for height)")]
     [Range(0f, 1f)]
-    [SerializeField] private float matchWidthOrHeight = 0.5f;
+    [SerializeField] private float widthHeightRatio = 0.5f;
 
     private CanvasScaler canvasScaler;
 
-    #region Unity Methods
     private void Awake()
     {
-        InitializeScaler();
-    }
-    #endregion
-
-    #region Initialization
-    private void InitializeScaler()
-    {
+        // Initialize the CanvasScaler component
         canvasScaler = GetComponent<CanvasScaler>();
-        if (!ValidateScaler()) return;
 
-        ConfigureScaler();
-        Debug.Log($"CanvasScaler настроен: ReferenceResolution={referenceResolution}, MatchWidthOrHeight={matchWidthOrHeight}");
-    }
-
-    private bool ValidateScaler()
-    {
-        if (canvasScaler == null)
+        if (canvasScaler != null)
         {
-            Debug.LogError("Компонент CanvasScaler не найден на объекте! Убедитесь, что он добавлен.");
-            enabled = false;
-            return false;
+            ConfigureCanvasScaler();
         }
-        return true;
+        else
+        {
+            Debug.LogError("CanvasScaler component is missing!");
+        }
     }
 
-    private void ConfigureScaler()
+    private void ConfigureCanvasScaler()
     {
+        // Set the UI scale mode to scale with screen size
         canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        canvasScaler.referenceResolution = referenceResolution;
+
+        // Set the reference resolution and scaling settings
+        canvasScaler.referenceResolution = targetResolution;
         canvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        canvasScaler.matchWidthOrHeight = matchWidthOrHeight;
+        canvasScaler.matchWidthOrHeight = widthHeightRatio;
+
+        Debug.Log($"CanvasScaler configured: Resolution={targetResolution}, Ratio={widthHeightRatio}");
     }
-    #endregion
 }
