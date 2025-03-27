@@ -205,10 +205,10 @@ public class Clicker : MonoBehaviour
     #region UI Updates
     public void UpdateAllScoreTexts()
     {
-        UpdateText(scoreText, $"Клики: {clickCount}");
+        UpdateText(scoreText, $" {clickCount}");
         foreach (var text in additionalScoreTexts)
-            UpdateText(text, $"Клики: {clickCount}");
-        UpdateText(multiplierText, $"Множитель: x{globalMultiplier:F1}");
+            UpdateText(text, $" {clickCount}");
+        UpdateText(multiplierText, $" x{globalMultiplier:F1}");
     }
 
     private void UpdateText(Text text, string value)
